@@ -11,3 +11,5 @@ Aircraft trajectories were created using data from opensky-network.org. Data was
 Navaid data for the entire continental United States was pulled from the FAA website at https://www.faa.gov/airtraffic/rco-vor-master-list.
 
 <img width="788" height="461" alt="image" src="https://github.com/user-attachments/assets/abdfe919-68a2-4815-96d5-6d2fb7ecfe9b" />
+
+### VOR Measurement Model
