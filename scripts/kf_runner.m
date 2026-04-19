@@ -29,10 +29,24 @@ navAids = VorNav.loadVorData('../dataSets/NAVAID_System.csv');
 vorMeasRate = 1; % hz
 vorMeasLast = 0;
 
+nTimes = numel(imuMeasured.time);
+
+% Initial Conditions
+
+x = zeros(21,nTimes);
+P = zeros(21,21,nTimes);
+
+x(:,1) = x0;
+P(:,:,1) = P0;
+
 % run for-loop
 for i = 1:numel(imuMeasured.time) 
 
     % -- KF PROPAGATION STEP HERE --
+    x(:,i+1) = dynamics(x(:,i), a, td,dt,i);
+    F = jacobian_f(x(:,i),a,td,dt,i);
+    Phi = expm(F * dt);
+    P(:,:,i+1) = Phi * P(:,:,i) * Phi' + Q;
     
     % wowee look at me I'm KF propagation math
 
@@ -130,5 +144,16 @@ function [imuMeasured, imuTruth] = createImuMeasurements(flightData, flightId)
 
     % normalize IMU measurement times
     imuMeasured.time = imuMeasured.time - imuMeasured.time(1);
+
+end
+
+function xnext = dynamics(x,a,td,dt,i)
+    dx = zeros(21,1);
+    dx(1:3) = x(4:6);
+    dx(4:6) = (a(:,i) - x(16:18).*9.80665e-3)./(1+ x(10:12).*9.80665e-3);
+    dx(7:9) = (td(:,i)-x(19:21))./(1+x(13:15).*1e-3);
+    dx(10:21) = zeros(12,1);
+    
+    xnext = x + dt*dx;
 
 end
