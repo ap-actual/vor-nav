@@ -46,6 +46,10 @@ P0 = diag([1e6; 1e6; 1e6; 100; 100; 100; 180; 180; 180;... % Dynamics prior free
     469.4444; 469.4444; 469.4444;...                       % Zero G Accel
     1; 1; 1]);                                             % Zero G Gyro
 
+% Q 
+Qc = diag([0; 0; 0; 3.4621e-07; 3.4621e-07; 3.4621e-07; 1.2250e-05; 1.2250e-05; 1.2250e-05; zeros(12,1)]);
+Q = Qc * dt;
+
 x = zeros(21,nTimes);
 P = zeros(21,21,nTimes);
 
