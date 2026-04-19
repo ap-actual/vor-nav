@@ -1,4 +1,3 @@
-<img width="200" height="150" alt="VOR Measurement Model" src="https://github.com/user-attachments/assets/8409472a-d160-40b5-997a-bfaf5dc86021" />
 # vor-nav
 
 ## Datasets Used
