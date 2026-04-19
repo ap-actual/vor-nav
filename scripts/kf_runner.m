@@ -9,21 +9,54 @@ setup_path
 load("dataSets\filtered_flights.mat");
 cd scripts\
 
+%% set up script constants
+clearvars -except flightData
+
+VOR_1_SIGMA = 2; % 2-deg 1-sigma
+
+
 %% generate truth IMU and VOR measurement data
 
 % clear everything except flight data (in case previous step has been skipped)
-clearvars -except flightData
 
-[imuMeasured, imuTruth] = buildGoldenDataset(flightData, 'icao_abe79d_F1')
+% create IMU measurement 
+[imuMeasured, imuTruth] = createImuMeasurements(flightData, 'icao_abe79d_F1');
+
+% load navaid data
+navAids = VorNav.loadVorData('../dataSets/NAVAID_System.csv');
+
+% VOR measurement rate
+vorMeasRate = 1; % hz
+vorMeasLast = 0;
+
+% run for-loop
+for i = 1:numel(imuMeasured.time) 
+
+    % if VOR meas happens, run VOR meas
+    if imuMeasured.time(i) - vorMeasLast > 1/vorMeasRate
+        
+        % generate VOR measurement
+        truthLla = [imuMeasured.lat(i), imuMeasured.lon(i), imuMeasured.alt(i)];
+
+        % create vor meas
+        vorMeasData = VorNav.vorMeas(truthLla, "lla", navAids);
+
+        % -- KF MEASUREMENT UPDATE HERE --
+        % note: bearing measurements from VorNav are truth meas, will need
+        % to add random draw to them
+        vorMeasBearing = vorMeasData.bearing_deg * VOR_1_SIGMA^2;
 
 
+        % reset last meas time
+        vorMeasLast = imuMeasured.time(i);
+    end
 
-
+end
 
 
 %% helper functions
 
-function [imuMeasured, imuTruth] = buildGoldenDataset(flightData, flightId)
+function [imuMeasured, imuTruth] = createImuMeasurements(flightData, flightId)
 
     thisName = flightId;
 
@@ -80,6 +113,9 @@ function [imuMeasured, imuTruth] = buildGoldenDataset(flightData, flightId)
     imuSpec.(thisName) = VorNav.buildImuSpec(); 
     
     % create imuMeasurements
-    imuMeasured.(thisName) = VorNav.addImuErrors(imuTruth.(thisName),imuSpec.(thisName));
+    imuMeasured = VorNav.addImuErrors(imuTruth.(thisName),imuSpec.(thisName));
+
+    % normalize IMU measurement times
+    imuMeasured.time = imuMeasured.time - imuMeasured.time(1);
 
 end
