@@ -32,6 +32,12 @@ vorMeasLast = 0;
 % run for-loop
 for i = 1:numel(imuMeasured.time) 
 
+    % -- KF PROPAGATION STEP HERE --
+    
+    % wowee look at me I'm KF propagation math
+
+
+
     % if VOR meas happens, run VOR meas
     if imuMeasured.time(i) - vorMeasLast > 1/vorMeasRate
         
@@ -44,7 +50,14 @@ for i = 1:numel(imuMeasured.time)
         % -- KF MEASUREMENT UPDATE HERE --
         % note: bearing measurements from VorNav are truth meas, will need
         % to add random draw to them
-        vorMeasBearing = vorMeasData.bearing_deg * VOR_1_SIGMA^2;
+
+        % generate VOR meas with noise
+        vorNoise = VOR_1_SIGMA * randn(1,numel([vorMeasData.bearing_deg]));
+        vorMeasBearing = [vorMeasData.bearing_deg];
+        vorMeasBearing = vorNoise + vorMeasBearing;
+
+        % UPDATE LOGIC GOES HERE
+
 
 
         % reset last meas time

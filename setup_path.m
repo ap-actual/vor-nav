@@ -2,3 +2,4 @@
 % run this before running anything in the 'scripts' folder
 restoredefaultpath
 addpath("matlab\");
+addpath("dataSets\")
