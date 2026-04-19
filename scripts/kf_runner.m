@@ -59,15 +59,11 @@ P(:,:,1) = P0;
 % run for-loop
 for i = 1:numel(trajImuData.time) 
 
-    % -- KF PROPAGATION STEP HERE --
+    % -- KF PROPAGATION --
     x(:,i+1) = dynamics(x(:,i), a, td,dt,i);
     F = jacobian_f(x(:,i),a,td,dt,i);
     Phi = expm(F * dt);
     P(:,:,i+1) = Phi * P(:,:,i) * Phi' + Q;
-    
-    % wowee look at me I'm KF propagation math
-
-
 
     % if VOR meas happens, run VOR meas
     if trajImuData.time(i) - vorMeasLast > 1/vorMeasRate
@@ -164,6 +160,7 @@ function [imuMeasured, imuTruth] = createImuMeasurements(flightData, flightId)
 
 end
 
+% Dynamics Function
 function xnext = dynamics(x,a,td,dt,i)
     dx = zeros(21,1);
     dx(1:3) = x(4:6);
@@ -173,4 +170,23 @@ function xnext = dynamics(x,a,td,dt,i)
     
     xnext = x + dt*dx;
 
+end
+
+% Jacobian
+function F = jacobian_f(x,a,td,dt,k)
+
+    n=length(x);
+    eps=1e-6;
+    F=zeros(n);
+    
+    f0=dynamics(x,a,td,dt,k);
+    
+    for i=1:n
+        xp=x;
+        xp(i)=xp(i)+eps;
+        
+        fp=dynamics(xp,a,td,dt,k);
+        
+        F(:,i)=(fp-f0)/eps;
+    end
 end
