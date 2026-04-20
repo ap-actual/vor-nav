@@ -98,10 +98,23 @@ for i = 1:numel(trajImuData.time)
         vorMeasBearing = vorNoise + vorMeasBearing;
 
         % measurement update
-        z = [vorMeasBearing'; zeros(25,1)];
+        % plot setup for debug
+        llaStateEst = eci2lla(x(1:3,i+1)', datevec(currentUTC));
+        geoscatter(llaStateEst(1), llaStateEst(2));
+
+        z = [deg2rad(vorMeasBearing'); zeros(25,1)];
         H = jacobian_h(x(:,i+1), vorMeasData, visibleVorIdents, currentUTC);
+
+        % compute HX
+        hx = predictedBearings(x(:,i+1), vorMeasData, visibleVorIdents, currentUTC);
+        z_vor = deg2rad(vorMeasBearing');
+        x(:, i+1) = x(:, i+1) + K * (z_vor - hx);
+
         K = P(:,:,i+1) * H' / (H * P(:,:,i+1) * H' + R);
-        x(:, i+1) = x(:, i+1) + K * (z - rad2deg(H*x(:,i+1)));
+        x(:, i+1)
+        H*x(:,i+1)
+        z
+        x(:, i+1) = x(:, i+1) + K * (z - H*x(:,i+1));
         P(:,:,i+1) = (eye(21) - K * H) *  P(:,:,i+1);
 
 
@@ -195,51 +208,67 @@ end
 % Measurement jacobian
 function H = jacobian_h(x, vorMeasData, visibleVorIdents, UTC)
 
-    pos = x(1:3);
+    pos = x(1:3);  % 3x1 ECI position
     n = numel(visibleVorIdents);
 
     H = zeros(n, 21);
 
     visibleIdx = find(contains(string(vertcat(vorMeasData.ident)), visibleVorIdents));
 
-    % Calculate ECEF 2 ECI once
-    omegaE = 7.2921159e-5; % rad/s
-    theta = omegaE * seconds(timeofday(UTC));
-
-    tECI2ECEF = [...
-     cos(theta),  sin(theta), 0;
-    -sin(theta),  cos(theta), 0;
-     0,           0,          1];
-
-    % Loop over measurements
     for k = 1:numel(visibleIdx)
-        stationLLA = [vorMeasData(k).lat, vorMeasData(k).lon, 0];
-        stationPosECI = lla2eci(stationLLA, datevec(UTC));
+        
+        stationLLA = [vorMeasData(visibleIdx(k)).lat, vorMeasData(visibleIdx(k)).lon, 0];
+        stationPosECI = lla2eci(stationLLA, datevec(UTC));  % 1x3
 
-        % Calculate VOR ECI to NED
+        datevecUTC = datevec(UTC);
 
-        lat = deg2rad(stationLLA(1));
-        lon = deg2rad(stationLLA(2));
-        sLat = sin(lat); cLat = cos(lat);
-        sLon = sin(lon); cLon = cos(lon);
+        % ECI to ECEF via MATLAB built-in (returns 3x3 rotation matrix)
+        tECI2ECEF_mat = dcmeci2ecef('IAU-2000/2006', datevecUTC);
 
-        tNED2ECEF = [...
-         -sLat*cLon, -sLon, -cLat*cLon;
-         -sLat*sLon,  cLon, -cLat*sLon;
-          cLat,       0,    -sLat];
+        % ECEF to NED via MATLAB built-in
+        lat = stationLLA(1);  % degrees
+        lon = stationLLA(2);  % degrees
+        tECEF2NED = dcmecef2ned(lat, lon);  % built-in from Aerospace Toolbox
 
-        tECI2NED = tNED2ECEF' * tECI2ECEF;
+        tECI2NED = tECEF2NED * tECI2ECEF_mat;
 
-        dr = pos - stationPosECI;
+        % FIX #4: transpose stationPosECI to match 3x1 pos
+        dr = pos - stationPosECI';   % 3x1
 
-        drNED = tECI2NED * dr';
+        drNED = tECI2NED * dr;       % 3x1, no transpose needed now
 
-        dx = drNED(1);
-        dy = drNED(2);
+        dx = drNED(1);   % North
+        dy = drNED(2);   % East
 
         r2 = dx^2 + dy^2;
 
-        Hvec = [-dy/r2 dx/r2 0] * tECI2NED;
-        H(visibleIdx(k), 1:3) = Hvec;
+        % Hvec: d(bearing)/d(posECI), bearing = atan2(East, North)
+        Hvec = [-dy/r2, dx/r2, 0] * tECI2NED;  % 1x3
+        H(k, 1:3) = Hvec;
+    end
+end
+
+function hx = predictedBearings(x, vorMeasData, visibleVorIdents, UTC)
+    pos = x(1:3);
+    visibleIdx = find(contains(string(vertcat(vorMeasData.ident)), visibleVorIdents));
+    n = numel(visibleIdx);
+    hx = zeros(n, 1);
+
+    tECI2ECEF_mat = dcmeci2ecef('IAU-2000/2006', datevec(UTC));
+
+    for k = 1:numel(visibleIdx)
+        stationLLA = [vorMeasData(visibleIdx(k)).lat, vorMeasData(visibleIdx(k)).lon, 0];
+        stationPosECI = lla2eci(stationLLA, datevec(UTC))';
+
+        lat = stationLLA(1);
+        lon = stationLLA(2);
+        tECEF2NED = dcmecef2ned(lat, lon);
+        tECI2NED = tECEF2NED * tECI2ECEF_mat;
+
+        dr = pos - stationPosECI;   % 3x1
+        drNED = tECI2NED * dr;
+
+        % bearing = atan2(East, North)
+        hx(k) = atan2(drNED(2), drNED(1));
     end
 end
