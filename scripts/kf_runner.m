@@ -73,8 +73,8 @@ for i = 1:numel(trajImuData.time)
    bodyRates = trajImuData.gyroRatesMeas(i,:);
 
     % -- KF PROPAGATION --
-    x(:,i+1) = dynamics(x(:,i), sf, bodyRates, dt, UTC, i);
-    F = jacobian_f(x(:,i), sf, bodyRates, dt, UTC, i);
+    x(:,i+1) = dynamics(x(:,i), sf, bodyRates, dt, currentUTC);
+    F = jacobian_f(x(:,i), sf, bodyRates, dt, currentUTC);
     Phi = expm(F * dt);
     P(:,:,i+1) = Phi * P(:,:,i) * Phi' + Q;
 
@@ -109,7 +109,7 @@ end
 
 %% helper functions
 % Dynamics Function
-function xnext = dynamics(x,a,td,dt,UTC,i)
+function xnext = dynamics(x,a,td,dt,UTC)
 
     tB2ECI = calculateBody2ECI(x, UTC);
 
@@ -120,11 +120,11 @@ function xnext = dynamics(x,a,td,dt,UTC,i)
 
     % Specific force into velocity; subtracting out our expected bias and
     % scale factor
-    dx(4:6) = (a(:,i) - x(16:18).*9.80665e-3)./(1+ x(10:12).*9.80665e-3);
+    dx(4:6) = tB2ECI * (a' - x(16:18) .* 9.80665e-3)./(1 + x(10:12) .* 9.80665e-3);
 
     % Angular rates into orientation; subtracting out our expected bias and
     % scale factor
-    dx(7:9) = (td(:,i)-x(19:21))./(1+x(13:15).*1e-3);
+    dx(7:9) = (td' - x(19:21))./(1 + x(13:15) .* 1e-3);
 
     % Don't propogate bias and scale factor
     dx(10:21) = zeros(12,1);
@@ -135,21 +135,21 @@ function xnext = dynamics(x,a,td,dt,UTC,i)
 end
 
 % Jacobian
-function F = jacobian_f(x,a,td,dt,UTC,k)
+function F = jacobian_f(x,a,td,dt,UTC)
 
     n = length(x);
     eps = 1e-6;
     F = zeros(n);
     
     % propogate to next state
-    f0 = dynamics(x,a,td,dt,UTC,k);
+    f0 = dynamics(x,a,td,dt,UTC);
     
     % perturbations
     for i=1:n
         xp = x;
         xp(i) = xp(i) + eps;
         
-        fp = dynamics(xp,a,td,dt,UTC,k);
+        fp = dynamics(xp,a,td,dt,UTC);
         
         F(:,i) = (fp-f0)/eps;
     end
@@ -167,7 +167,7 @@ function tB2ECI = calculateBody2ECI(x, UTC)
         cphi * stheta * cpsi + sphi * spsi, cphi * stheta * spsi - sphi * cpsi, cphi * ctheta];
 
     % NED to ECEF
-    lla = eci2lla(x(1:3), datevec(UTC));
+    lla = eci2lla(x(1:3)', datevec(UTC));
     lat = lla(1); slat = sind(lat); clat = cosd(lat);
     lon = lla(2); slon = sind(lon); clon = cosd(lon);
 
@@ -177,12 +177,14 @@ function tB2ECI = calculateBody2ECI(x, UTC)
 
     % ECEF to ECI
     omegaE = 7.2921159e-5; % rad/s
-    theta = omegaE * second(timeofday(UTC));
+    theta = omegaE * seconds(timeofday(UTC));
 
-    C_ecef2eci = [...
+    tECEF2ECI = [...
          cos(theta), -sin(theta), 0;
          sin(theta),  cos(theta), 0;
          0,           0,          1];
+
+    tB2ECI = tECEF2ECI * tNED2ECEF * tB2NED;
 
     
 end
