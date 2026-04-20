@@ -108,7 +108,9 @@ for i = 1:numel(trajImuData.time)
         % compute HX
         hx = predictedBearings(x(:,i+1), vorMeasData, visibleVorIdents, currentUTC);
         z_vor = deg2rad(vorMeasBearing');
-        x(:, i+1) = x(:, i+1) + K * (z_vor - hx);
+
+        innovation = mod(z_vor - hx + pi, 2*pi) - pi;  % wraps to (-pi, pi]
+        x(:, i+1) = x(:, i+1) + K * innovation;
 
         K = P(:,:,i+1) * H' / (H * P(:,:,i+1) * H' + R);
         x(:, i+1)
@@ -265,10 +267,10 @@ function hx = predictedBearings(x, vorMeasData, visibleVorIdents, UTC)
         tECEF2NED = dcmecef2ned(lat, lon);
         tECI2NED = tECEF2NED * tECI2ECEF_mat;
 
-        dr = pos - stationPosECI;   % 3x1
+        dr = pos - stationPosECI;
         drNED = tECI2NED * dr;
 
-        % bearing = atan2(East, North)
-        hx(k) = atan2(drNED(2), drNED(1));
+        % atan2 returns (-pi, pi]; wrap to [0, 2pi)
+        hx(k) = mod(atan2(drNED(2), drNED(1)), 2*pi);
     end
 end
