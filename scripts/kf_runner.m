@@ -101,7 +101,7 @@ for i = 1:numel(trajImuData.time)
         z = [vorMeasBearing'; zeros(25,1)];
         H = jacobian_h(x, vorMeasData, visibleVorIdents, currentUTC);
         K = P(:,:,i+1) * H' / (H * P(:,:,i+1) * H' + R);
-        x(:, i+1) = x(:, i+1) + K * (rad2deg(H*x(:,i+1)) - z);
+        x(:, i+1) = x(:, i+1) + K * (H*x(:,i+1) - z);
         P(:,:,i+1) = (eye(21) - K * H) *  P(:,:,i+1);
 
 
@@ -203,7 +203,7 @@ function H = jacobian_h(x, vorMeasData, visibleVorIdents, UTC)
     visibleIdx = find(contains(string(vertcat(vorMeasData.ident)), visibleVorIdents));
 
     for k = 1:numel(visibleIdx)
-        stationLLA = [vorMeasData(k).x, vorMeasData(k).y 0];
+        stationLLA = [vorMeasData(k).lat, vorMeasData(k).lon, 0];
         stationPosECI = lla2eci(stationLLA, datevec(UTC));
 
         % Calculate VOR ECI to NED
@@ -228,12 +228,16 @@ function H = jacobian_h(x, vorMeasData, visibleVorIdents, UTC)
 
         tECI2NED = tECEF2NED * tECI2ECEF;
 
-        dx = pos(1) - stationPosECI(1);
-        dy = pos(2) - stationPosECI(2);
+        dr = pos - stationPosECI;
+
+        drNED = tECI2NED * dr';
+
+        dx = drNED(1);
+        dy = drNED(2);
 
         r2 = dx^2 + dy^2;
 
-        Hvec = tECI2NED * [dy/r2; -dx/r2; 0];
+        Hvec = tECI2NED' * [-dy/r2; dx/r2; 0];
         H(visibleIdx(k), 1:3) = Hvec';
     end
 end
