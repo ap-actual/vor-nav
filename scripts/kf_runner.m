@@ -25,6 +25,9 @@ trajImuData= VorNav.createImuMeasurements(flightData, 'icao_abe79d_F1');
 % load navaid data
 navAids = VorNav.loadVorData('../dataSets/NAVAID_System.csv');
 
+% find vors along flight path
+visibleVorIdents = VorNav.findVorsAlongFlightpath(trajImuData, navAids);
+
 % VOR measurement rate
 vorMeasRate = 1; % hz
 vorMeasLast = 0;
@@ -88,9 +91,7 @@ for i = 1:numel(trajImuData.time)
         % create vor meas
         vorMeasData = VorNav.vorMeas(truthLla, "lla", navAids);
 
-        % -- KF MEASUREMENT UPDATE HERE --
-        % note: bearing measurements from VorNav are truth meas, will need
-        % to add random draw to them
+        H = jacobian_h(x, navAids, vorMeasData, visibleVorIdents, currentUTC);
 
         % generate VOR meas with noise
         vorNoise = VOR_1_SIGMA * randn(1,numel([vorMeasData.bearing_deg]));
@@ -188,37 +189,22 @@ function tB2ECI = calculateBody2ECI(x, UTC)
     
 end
 
-% Measurement
-function zhat = h(x, navAids, vorMeasData)
-
-    pos = x(1:3); % aircraft position
-
-    n = numel(vorMeasData);
-    zhat = zeros(n,1);
-
-    for k = 1:n
-        stationPos = navAids(vorMeasData(k).id).position;
-
-        dx = pos(1) - stationPos(1);
-        dy = pos(2) - stationPos(2);
-
-        zhat(k) = atan2(dy, dx);
-    end
-end
-
 % Measurement jacobian
-function H = jacobian_h(x, navAids, vorMeasData)
+function H = jacobian_h(x, navAids, vorMeasData, visibleVorIdents, UTC)
 
     pos = x(1:3);
-    n = numel(vorMeasData);
+    n = numel(visibleVorIdents);
 
     H = zeros(n, 21);
 
-    for k = 1:n
-        stationPos = navAids(vorMeasData(k).id).position;
+    visibleIdx = find(contains(string(vertcat(vorMeasData.ident)), visibleVorIdents));
 
-        dx = pos(1) - stationPos(1);
-        dy = pos(2) - stationPos(2);
+    for k = 1:numel(visibleIdx)
+        stationLLA = [vorMeasData(k).x, vorMeasData(k).y 0];
+        stationPosECI = lla2eci(stationLLA, datevec(UTC));
+
+        dx = pos(1) - stationPosECI(1);
+        dy = pos(2) - stationPosECI(2);
 
         r2 = dx^2 + dy^2;
 
