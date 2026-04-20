@@ -218,10 +218,10 @@ function H = jacobian_h(x, vorMeasData, visibleVorIdents, UTC)
 
         % Calculate VOR ECI to NED
 
-        lat = stationLLA(1);
-        lon = stationLLA(2);
-        sLat = sind(lat); cLat = cosd(lat);
-        sLon = sind(lon); cLon = cosd(lon);
+        lat = deg2rad(stationLLA(1));
+        lon = deg2rad(stationLLA(2));
+        sLat = sin(lat); cLat = cos(lat);
+        sLon = sin(lon); cLon = cos(lon);
 
         tNED2ECEF = [...
          -sLat*cLon, -sLon, -cLat*cLon;
