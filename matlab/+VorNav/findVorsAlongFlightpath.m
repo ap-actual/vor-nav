@@ -48,8 +48,9 @@ if args.plotFlag
             geoscatter(navAids.low(i).y, navAids.low(i).x, 'ob');
         end
     end
+    geobasemap topographic
 end
 
-geobasemap topographic
+
 
 end
