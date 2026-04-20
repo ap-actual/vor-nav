@@ -99,9 +99,9 @@ for i = 1:numel(trajImuData.time)
 
         % measurement update
         z = [vorMeasBearing'; zeros(25,1)];
-        H = jacobian_h(x, vorMeasData, visibleVorIdents, currentUTC);
+        H = jacobian_h(x(:,i+1), vorMeasData, visibleVorIdents, currentUTC);
         K = P(:,:,i+1) * H' / (H * P(:,:,i+1) * H' + R);
-        x(:, i+1) = x(:, i+1) + K * (z - H*x(:,i+1));
+        x(:, i+1) = x(:, i+1) + K * (z - rad2deg(H*x(:,i+1)));
         P(:,:,i+1) = (eye(21) - K * H) *  P(:,:,i+1);
 
 
@@ -223,12 +223,12 @@ function H = jacobian_h(x, vorMeasData, visibleVorIdents, UTC)
         sLat = sind(lat); cLat = cosd(lat);
         sLon = sind(lon); cLon = cosd(lon);
 
-        tECEF2NED = [...
+        tNED2ECEF = [...
          -sLat*cLon, -sLon, -cLat*cLon;
          -sLat*sLon,  cLon, -cLat*sLon;
           cLat,       0,    -sLat];
 
-        tECI2NED = tECEF2NED * tECI2ECEF;
+        tECI2NED = tNED2ECEF' * tECI2ECEF;
 
         dr = pos - stationPosECI;
 
