@@ -101,7 +101,7 @@ for i = 1:numel(trajImuData.time)
         z = [vorMeasBearing'; zeros(25,1)];
         H = jacobian_h(x, vorMeasData, visibleVorIdents, currentUTC);
         K = P(:,:,i+1) * H' / (H * P(:,:,i+1) * H' + R);
-        x(:, i+1) = x(:, i+1) + K * (H*x(:,i+1) - z);
+        x(:, i+1) = x(:, i+1) + K * (z - H*x(:,i+1));
         P(:,:,i+1) = (eye(21) - K * H) *  P(:,:,i+1);
 
 
@@ -202,6 +202,16 @@ function H = jacobian_h(x, vorMeasData, visibleVorIdents, UTC)
 
     visibleIdx = find(contains(string(vertcat(vorMeasData.ident)), visibleVorIdents));
 
+    % Calculate ECEF 2 ECI once
+    omegaE = 7.2921159e-5; % rad/s
+    theta = omegaE * seconds(timeofday(UTC));
+
+    tECI2ECEF = [...
+     cos(theta),  sin(theta), 0;
+    -sin(theta),  cos(theta), 0;
+     0,           0,          1];
+
+    % Loop over measurements
     for k = 1:numel(visibleIdx)
         stationLLA = [vorMeasData(k).lat, vorMeasData(k).lon, 0];
         stationPosECI = lla2eci(stationLLA, datevec(UTC));
@@ -218,14 +228,6 @@ function H = jacobian_h(x, vorMeasData, visibleVorIdents, UTC)
          -sLat*sLon,  cLon, -cLat*sLon;
           cLat,       0,    -sLat];
 
-        omegaE = 7.2921159e-5; % rad/s
-        theta = omegaE * seconds(timeofday(UTC));
-
-        tECI2ECEF = [...
-         cosd(theta),  sind(theta), 0;
-        -sind(theta),  cosd(theta), 0;
-         0,           0,          1];
-
         tECI2NED = tECEF2NED * tECI2ECEF;
 
         dr = pos - stationPosECI;
@@ -237,7 +239,7 @@ function H = jacobian_h(x, vorMeasData, visibleVorIdents, UTC)
 
         r2 = dx^2 + dy^2;
 
-        Hvec = tECI2NED' * [-dy/r2; dx/r2; 0];
-        H(visibleIdx(k), 1:3) = Hvec';
+        Hvec = [-dy/r2 dx/r2 0] * tECI2NED;
+        H(visibleIdx(k), 1:3) = Hvec;
     end
 end
