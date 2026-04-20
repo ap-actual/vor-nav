@@ -210,8 +210,8 @@ function H = jacobian_h(x, vorMeasData, visibleVorIdents, UTC)
 
         lat = stationLLA(1);
         lon = stationLLA(2);
-        sLat = sin(lat); cLat = cos(lat);
-        sLon = sin(lon); cLon = cos(lon);
+        sLat = sind(lat); cLat = cosd(lat);
+        sLon = sind(lon); cLon = cosd(lon);
 
         tECEF2NED = [...
          -sLat*cLon, -sLon, -cLat*cLon;
@@ -222,8 +222,8 @@ function H = jacobian_h(x, vorMeasData, visibleVorIdents, UTC)
         theta = omegaE * seconds(timeofday(UTC));
 
         tECI2ECEF = [...
-         cos(theta),  sin(theta), 0;
-        -sin(theta),  cos(theta), 0;
+         cosd(theta),  sind(theta), 0;
+        -sind(theta),  cosd(theta), 0;
          0,           0,          1];
 
         tECI2NED = tECEF2NED * tECI2ECEF;
