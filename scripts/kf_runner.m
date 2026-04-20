@@ -69,12 +69,13 @@ P(:,:,1) = P0;
 for i = 1:numel(trajImuData.time) 
 
    currentUTC = initialUTC + seconds(dt * i);
+   tB2ECI = calculateBody2ECI(x(:,i), currentUTC);
    sf = trajImuData.specificForceBodyMeas(i,:);
    bodyRates = trajImuData.gyroRatesMeas(i,:);
 
     % -- KF PROPAGATION --
-    x(:,i+1) = dynamics(x(:,i), sf, bodyRates, dt, currentUTC);
-    F = jacobian_f(x(:,i), sf, bodyRates, dt, currentUTC);
+    x(:,i+1) = dynamics(x(:,i), sf, bodyRates, dt, tB2ECI);
+    F = jacobian_f(x(:,i), sf, bodyRates, dt, tB2ECI);
     Phi = expm(F * dt);
     P(:,:,i+1) = Phi * P(:,:,i) * Phi' + Q;
 
@@ -109,9 +110,7 @@ end
 
 %% helper functions
 % Dynamics Function
-function xnext = dynamics(x,a,td,dt,UTC)
-
-    tB2ECI = calculateBody2ECI(x, UTC);
+function xnext = dynamics(x,a,td,dt,tB2ECI)
 
     dx = zeros(21,1);
 
@@ -135,21 +134,21 @@ function xnext = dynamics(x,a,td,dt,UTC)
 end
 
 % Jacobian
-function F = jacobian_f(x,a,td,dt,UTC)
+function F = jacobian_f(x,a,td,dt,tB2ECI)
 
     n = length(x);
     eps = 1e-6;
     F = zeros(n);
     
     % propogate to next state
-    f0 = dynamics(x,a,td,dt,UTC);
+    f0 = dynamics(x,a,td,dt,tB2ECI);
     
     % perturbations
     for i=1:n
         xp = x;
         xp(i) = xp(i) + eps;
         
-        fp = dynamics(xp,a,td,dt,UTC);
+        fp = dynamics(xp,a,td,dt,tB2ECI);
         
         F(:,i) = (fp-f0)/eps;
     end
