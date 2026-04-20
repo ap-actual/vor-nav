@@ -14,6 +14,7 @@ clearvars -except flightData
 
 VOR_1_SIGMA = 2; % 2-deg 1-sigma
 
+R = VOR_1_SIGMA^2;
 
 %% generate truth IMU and VOR measurement data
 
@@ -91,15 +92,17 @@ for i = 1:numel(trajImuData.time)
         % create vor meas
         vorMeasData = VorNav.vorMeas(truthLla, "lla", navAids);
 
-        H = jacobian_h(x, navAids, vorMeasData, visibleVorIdents, currentUTC);
-
         % generate VOR meas with noise
         vorNoise = VOR_1_SIGMA * randn(1,numel([vorMeasData.bearing_deg]));
         vorMeasBearing = [vorMeasData.bearing_deg];
         vorMeasBearing = vorNoise + vorMeasBearing;
 
-        % UPDATE LOGIC GOES HERE
-
+        % measurement update
+        z = [vorMeasBearing'; zeros(25,1)];
+        H = jacobian_h(x, vorMeasData, visibleVorIdents, currentUTC);
+        K = P(:,:,i+1) * H' / (H * P(:,:,i+1) * H' + R);
+        x(:, i+1) = x(:, i+1) + K * (rad2deg(H*x(:,i+1)) - z);
+        P(:,:,i+1) = (eye(21) - K * H) *  P(:,:,i+1);
 
 
         % reset last meas time
@@ -190,7 +193,7 @@ function tB2ECI = calculateBody2ECI(x, UTC)
 end
 
 % Measurement jacobian
-function H = jacobian_h(x, navAids, vorMeasData, visibleVorIdents, UTC)
+function H = jacobian_h(x, vorMeasData, visibleVorIdents, UTC)
 
     pos = x(1:3);
     n = numel(visibleVorIdents);
@@ -203,12 +206,34 @@ function H = jacobian_h(x, navAids, vorMeasData, visibleVorIdents, UTC)
         stationLLA = [vorMeasData(k).x, vorMeasData(k).y 0];
         stationPosECI = lla2eci(stationLLA, datevec(UTC));
 
+        % Calculate VOR ECI to NED
+
+        lat = stationLLA(1);
+        lon = stationLLA(2);
+        sLat = sin(lat); cLat = cos(lat);
+        sLon = sin(lon); cLon = cos(lon);
+
+        tECEF2NED = [...
+         -sLat*cLon, -sLon, -cLat*cLon;
+         -sLat*sLon,  cLon, -cLat*sLon;
+          cLat,       0,    -sLat];
+
+        omegaE = 7.2921159e-5; % rad/s
+        theta = omegaE * seconds(timeofday(UTC));
+
+        tECI2ECEF = [...
+         cos(theta),  sin(theta), 0;
+        -sin(theta),  cos(theta), 0;
+         0,           0,          1];
+
+        tECI2NED = tECEF2NED * tECI2ECEF;
+
         dx = pos(1) - stationPosECI(1);
         dy = pos(2) - stationPosECI(2);
 
         r2 = dx^2 + dy^2;
 
-        H(k,1) = -dy / r2;
-        H(k,2) =  dx / r2;
+        Hvec = tECI2NED * [dy/r2; -dx/r2; 0];
+        H(visibleIdx(k), 1:3) = Hvec';
     end
 end
