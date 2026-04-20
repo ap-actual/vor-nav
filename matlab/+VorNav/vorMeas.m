@@ -1,8 +1,5 @@
 function validVORs = vorMeas(pos, posType, navaids)
     % VORMEAS Returns VORs in range and bearing
-    % Inputs: 
-    %   pos: [lat, lon, alt] (deg, deg, m) OR [X, Y, Z] ECEF (meters)
-    %   navaids: the navaid struct
     arguments
         pos (3,1) double
         posType {mustBeMember(posType, ["lla", "ecef"])}
@@ -14,26 +11,24 @@ function validVORs = vorMeas(pos, posType, navaids)
     validVORs = []; 
     m2ft = 3.28084;
 
-    % 1. Coordinate Handling (Identify if ECEF or Lat/Lon)
+    % 1. Coordinate Handling
     if posType == "ecef"
-        myLatLon = ecef2lla(pos);
-
+        myLatLon = ecef2lla(pos'); % Note: ecef2lla usually expects row vectors
         myLat = myLatLon(1);
         myLon = myLatLon(2);
-        myAlt = myLatLon(3) * m2ft; % in feet
-
+        myAlt = myLatLon(3) * m2ft; 
     else
-        % Input is already [lat, lon]
         myLat = pos(1);
         myLon = pos(2);
-        myAlt = pos(3) * m2ft; % in feet
+        myAlt = pos(3) * m2ft; 
     end
 
     % 2. Calculation Handles
     haversine = @(lat1, lon1, lat2, lon2) ...
         2 * 6371000 * asin(sqrt(sin(deg2rad((lat2 - lat1)/2)).^2 + ...
         cos(deg2rad(lat1)) .* cos(deg2rad(lat2)) .* sin(deg2rad((lon2 - lon1)/2)).^2));
-
+    
+    % Calculates bearing from Point A to Point B
     calculateBearing = @(latA, lonA, latB, lonB) ...
         mod(rad2deg(atan2(sin(deg2rad(lonB-lonA)) * cos(deg2rad(latB)), ...
         cos(deg2rad(latA)) * sin(deg2rad(latB)) - ...
@@ -52,19 +47,26 @@ function validVORs = vorMeas(pos, posType, navaids)
     % 4. Search VORs
     allTypes = [navaids.low; navaids.high];
     for i = 1:length(allTypes)
-        % Apply specific Low-VOR logic if needed
+        % Explicitly map x/y to lat/lon for clarity
+        vorLat = allTypes(i).y;
+        vorLon = allTypes(i).x;
+        
         isLow = contains(allTypes(i).class, 'L-VOR');
         currentMaxRange = rangeNM;
         if isLow, currentMaxRange = 40; end
-        
-        % Skip if altitude is too high for Low-VORs based on your original rules
         if isLow && myAlt >= 14500, continue; end
         
-        dist = haversine(myLat, myLon, allTypes(i).y, allTypes(i).x);
+        dist = haversine(myLat, myLon, vorLat, vorLon);
+        
         if dist <= currentMaxRange * nm2m
             res = allTypes(i);
+            % Add explicit coordinate fields to the output struct
+            res.lat = vorLat;
+            res.lon = vorLon;
             res.distance_m = dist;
-            res.bearing_deg = calculateBearing(res.y, res.x, myLat, myLon);
+            % Bearing FROM aircraft TO VOR
+            res.bearing_deg = calculateBearing(myLat, myLon, vorLat, vorLon);
+            
             validVORs = [validVORs; res]; 
         end
     end
