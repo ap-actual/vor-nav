@@ -6,7 +6,7 @@ function plotStateEstimate(utc, x, P, trajImuData)
     % downsample state data
     tol = 1e-9;
     secIdx = mod(utcSeconds, 2) < tol | mod(utcSeconds, 2) > (2 - tol);
-    secIdx = true(1,numel(utcSeconds));
+    % secIdx = true(1,numel(utcSeconds));
 
     % utc time
     utcDownsampled = utc(secIdx);

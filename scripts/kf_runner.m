@@ -12,7 +12,7 @@ cd scripts\
 %% set up script constants
 clearvars -except flightData
 
-VOR_1_SIGMA = 2; % 2-deg 1-sigma
+VOR_1_SIGMA = deg2rad(2); % 2-deg 1-sigma
 
 R = VOR_1_SIGMA^2;
 
@@ -54,15 +54,18 @@ x0 = [pos0; vel0; orn0;... % dynamic states, X0 will be set depending on traject
     0; 0; 0];                       % Zero G Gyro
 
 % P0
-P0 = diag([1e3; 1e3; 1e3; 10; 10; 10; 180; 180; 180;... % Dynamics prior free(?)
+P0 = diag([1e4; 1e4; 1e4; 100; 100; 100; 180; 180; 180;... % Dynamics prior free(?)
     6.4000e-07; 6.4000e-07; 6.4000e-07;...                 % Accel Sensitivites
     8.5069e-04; 8.5069e-04; 8.5069e-04;...                 % Gyro Sensitivites
     469.4444; 469.4444; 469.4444;...                       % Zero G Accel
     1; 1; 1]);                                             % Zero G Gyro
 
 % Q 
-Qc = diag([0; 0; 0; 3.4621e-07; 3.4621e-07; 3.4621e-07; 1.2250e-05; 1.2250e-05; 1.2250e-05; zeros(12,1)])*1000;
-Q = Qc * dt;
+% Qc = diag([0; 0; 0; 3.4621e-07; 3.4621e-07; 3.4621e-07; 1.2250e-05; 1.2250e-05; 1.2250e-05; zeros(12,1)])*10000;
+% Q = Qc * dt;
+
+Q = diag([0; 0; 0; 3.4621e-07; 3.4621e-07; 3.4621e-07; 1.2250e-05; 1.2250e-05; 1.2250e-05; zeros(12,1)])*1000000000000;
+
 
 x = zeros(21,nTimes);
 P = zeros(21,21,nTimes);
@@ -95,6 +98,8 @@ for i = 1:numel(trajImuData.time)
 
         % create vor meas
         vorMeasData = VorNav.vorMeas(truthLla, "lla", navAids);
+        nVor = numel(vorMeasData);           % <-- ADD THIS
+        R = VOR_1_SIGMA^2 * eye(nVor);      % <-- ADD/MOVE THIS (was likely hardcoded outside loop)
 
         % generate VOR meas with noise
         vorNoise = VOR_1_SIGMA * randn(1,numel([vorMeasData.bearing_deg]));
@@ -122,13 +127,13 @@ for i = 1:numel(trajImuData.time)
 
         % check for 3 sigma innovation
         badInd = abs(innovation) >= 3 * deg2rad(sqrt(R));
-        if all(badInd)
-            fprintf("All measurements thrown out at t = %d seconds!\r\n", trajImuData.time(i))
-            continue
-        end
-        if any(badInd)
-            H(badInd,:) = zeros(sum(badInd), 21);
-        end
+        % if all(badInd)
+        %     fprintf("All measurements thrown out at t = %d seconds!\r\n", trajImuData.time(i))
+        %     continue
+        % end
+        % if any(badInd)
+        %     H(badInd,:) = zeros(sum(badInd), 21);
+        % end
 
         K = P(:,:,i+1) * H' / (H * P(:,:,i+1) * H' + R);
 
