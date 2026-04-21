@@ -37,7 +37,7 @@ nTimes = numel(trajImuData.time);
 dt = trajImuData.time(2) - trajImuData.time(1);
 
 % Initial Conditions
-% x0
+% gather info for x0
 lla0 = [trajImuData.lat(1), trajImuData.lon(1), trajImuData.alt(1)];
 initialUTC = datetime(2000, 1, 1, 0, 0, 0, 0, 'TimeZone', 'UTC', 'Format', 'dd-MMM-uuuu HH:mm:ss.SSS');
 pos0 = lla2eci(lla0, datevec(initialUTC))';
@@ -47,29 +47,24 @@ velNED0 = trajImuData.velocityNED(1,:) .* 0.514444;
 velECEF0 = [velECEFX0, velECEFY0, velECEFZ0];
 [~, vel0] = ecef2eci(initialUTC, pos0ECEF, velECEF0);
 orn0 = rad2deg(trajImuData.eulerAngles(1,:)');
-x0 = [pos0; vel0; orn0;... % dynamic states, X0 will be set depending on trajectory
-    0.122; 0.122; 0.122; ...        % Accel Sensitivies, based on document
-    4.375; 4.375; 4.375;...         % Gyro Sensitivies, based on document
-    0; 0; 0; ...                    % Zero G Accel
-    0; 0; 0];                       % Zero G Gyro
+
+% x0
+x0 = [pos0; vel0; orn0];
 
 % P0
-P0 = diag([1e4; 1e4; 1e4; 100; 100; 100; 180; 180; 180;... % Dynamics prior free(?)
-    6.4000e-07; 6.4000e-07; 6.4000e-07;...                 % Accel Sensitivites
-    8.5069e-04; 8.5069e-04; 8.5069e-04;...                 % Gyro Sensitivites
-    469.4444; 469.4444; 469.4444;...                       % Zero G Accel
-    1; 1; 1]);                                             % Zero G Gyro
+P0 = diag([1e8; 1e8; 1e8; 10; 10; 10; pi/4; pi/4; pi/4]);
 
-% Q 
-% Qc = diag([0; 0; 0; 3.4621e-07; 3.4621e-07; 3.4621e-07; 1.2250e-05; 1.2250e-05; 1.2250e-05; zeros(12,1)])*10000;
+% Q
+% Qc = diag([0.1; 0.1; 0.1; 0.1; 0.1; 0.1; 0.1; 0.1; 0.1])*10000;
 % Q = Qc * dt;
+Qc = diag([100; 100; 100; 1; 1; 1; 0.01; 0.01; 0.01])*1000;
+Q = Qc * dt;
 
-Q = diag([0; 0; 0; 3.4621e-07; 3.4621e-07; 3.4621e-07; 1.2250e-05; 1.2250e-05; 1.2250e-05; zeros(12,1)])*1000000000000;
+% pre-allocate state
+x = zeros(9,nTimes);
+P = zeros(9,9,nTimes);
 
-
-x = zeros(21,nTimes);
-P = zeros(21,21,nTimes);
-
+% set initial state
 x(:,1) = x0;
 P(:,:,1) = P0;
 
@@ -87,6 +82,9 @@ for i = 1:numel(trajImuData.time)
     Phi = F;
     P(:,:,i+1) = Phi * P(:,:,i) * Phi' + Q;
 
+    % after computing F/Phi, before propagating P
+    eigsPhi = eig(Phi);
+
     trueLLA = [trajImuData.lat(i), trajImuData.lon(i), trajImuData.alt(i)];
     trueECI = lla2eci(trueLLA, datevec(currentUTC(i)));
 
@@ -98,61 +96,161 @@ for i = 1:numel(trajImuData.time)
 
         % create vor meas
         vorMeasData = VorNav.vorMeas(truthLla, "lla", navAids);
-        nVor = numel(vorMeasData);           % <-- ADD THIS
-        R = VOR_1_SIGMA^2 * eye(nVor);      % <-- ADD/MOVE THIS (was likely hardcoded outside loop)
+        nVor = numel(vorMeasData);
+        R = VOR_1_SIGMA^2 * eye(nVor);
 
         % generate VOR meas with noise
         vorNoise = VOR_1_SIGMA * randn(1,numel([vorMeasData.bearing_deg]));
         vorMeasBearing = [vorMeasData.bearing_deg];
         vorMeasBearing = vorNoise + vorMeasBearing;
 
-        % measurement update
-        % plot setup for debug
-        % llaStateEst = eci2lla(x(1:3,i+1)', datevec(currentUTC));
-        % geoscatter(llaStateEst(1), llaStateEst(2));
-        % 
-        % z = [deg2rad(vorMeasBearing'); zeros(25,1)];
-        % H = jacobian_h(x(:,i+1), vorMeasData, visibleVorIdents, currentUTC);
-        % 
-
+        % compute jacobian
         H = predictedBearingJacobian(x(:,i+1), vorMeasData, visibleVorIdents, currentUTC(i));
 
         % compute HX
-        hx = predictedBearings(trueECI', vorMeasData, visibleVorIdents, currentUTC(i));
+        hx = predictedBearings(x(1:3,i+1), vorMeasData, visibleVorIdents, currentUTC(i));
         z_vor = deg2rad(vorMeasBearing');
 
-        
         innovation = mod(z_vor - hx + pi, 2*pi) - pi;  % wraps to (-pi, pi]
-        disp(innovation)
+        % disp(innovation)
 
-        % check for 3 sigma innovation
-        badInd = abs(innovation) >= 3 * deg2rad(sqrt(R));
-        % if all(badInd)
-        %     fprintf("All measurements thrown out at t = %d seconds!\r\n", trajImuData.time(i))
-        %     continue
-        % end
-        % if any(badInd)
-        %     H(badInd,:) = zeros(sum(badInd), 21);
-        % end
+        S = H * P(:,:,i+1) * H' + R;
+        S_diag = diag(S);  % individual innovation variances
 
-        K = P(:,:,i+1) * H' / (H * P(:,:,i+1) * H' + R);
+        % find which measurements pass the gate
+        valid = false(nVor, 1);
+        for j = 1:nVor
+            norm_innov_sq = innovation(j)^2 / S_diag(j);  % scalar chi2, 1-DOF
+            if norm_innov_sq < chi2inv(0.9973, 1)  % = 8.99
+                valid(j) = true;
+            else
+                fprintf("Bearing %.0f gated at t = %.1f s (%.2f sigma)\n", ...
+                    j, trajImuData.time(i), sqrt(norm_innov_sq));
+            end
+        end
 
-        x(:, i+1) = x(:, i+1) + K * innovation;
+        % only update if at least one measurement passed
+        if any(valid)
+            H_v = H(valid, :);
+            R_v = R(valid, valid);
+            innovation_v = innovation(valid);
 
-        IKH = eye(21) - K * H;
-        P(:,:,i+1) = IKH * P(:,:,i+1) * IKH' + K * R * K';
-        P(:,:,i+1) = (P(:,:,i+1) + P(:,:,i+1)') / 2;
+            S_v = H_v * P(:,:,i+1) * H_v' + R_v;
+            K = P(:,:,i+1) * H_v' / S_v;
+            x(:,i+1) = x(:,i+1) + K * innovation_v;
+            IKH = eye(9) - K * H_v;
+            P(:,:,i+1) = IKH * P(:,:,i+1) * IKH' + K * R_v * K';
+            P(:,:,i+1) = (P(:,:,i+1) + P(:,:,i+1)') / 2;
+            fprintf("Measurement update at t = %f s (%d/%d bearings used)\n", ...
+                trajImuData.time(i), sum(valid), nVor);
 
-        % disp('H = '); disp(H)
-        % disp('H*P*H'' + R = '); disp(H * P(:,:,i+1) * H' + R)
-        % disp('K = '); disp(K)
-        % disp('K*H = '); disp(K*H)
-        % disp('eig(I - K*H) = '); disp(eig(eye(21) - K*H))
+            eigvals = eig(P(:,:,i+1));
+            fprintf("min eigenvalue of P: %.4e\n", min(eigvals));
+        end
         
-        fprintf("Successful measurement update at t = %d seconds!\r\n", trajImuData.time(i))
-
         % reset last meas time
         vorMeasLast = trajImuData.time(i);
+
+        % ------ GEOPLOT UPDATE -------------------------------------------
+        figure(1); clf;
+
+        % plot all known VORs (dim)
+        % allLats = [navAids.high(:).y, navAids.low(:).y];
+        % allLons = [navAids.high(:).x, navAids.low(:).x];
+        % geoplot(allLats, allLons, 'b.', 'MarkerSize', 6, 'DisplayName', 'All VORs');
+        % hold on;
+
+        % plot visible/active VORs (bright, labeled)
+        if any(valid)
+            activeLats = [vorMeasData(valid).lat];
+            activeLons = [vorMeasData(valid).lon];
+            geoplot(activeLats, activeLons, 'b^', 'MarkerSize', 10, ...
+                'MarkerFaceColor', 'b', 'DisplayName', 'Active VORs');
+            hold on;
+
+            for j = 1:numel(activeLats)
+                text(activeLats(j), activeLons(j), ...
+                    sprintf('  %s', vorMeasData(j).ident), ...  % adjust field name to match your struct
+                    'FontSize', 8, 'Color', 'blue');
+            end
+        end
+
+        % convert current ECI state estimate to LLA for plotting
+        estLLA = eci2lla(x(1:3, i+1)', datevec(currentUTC(i)));
+        geoplot(estLLA(1), estLLA(2), 'g*', 'MarkerSize', 14, ...
+            'MarkerFaceColor', 'g', 'DisplayName', 'KF Estimate');
+
+        % plot truth for reference
+        geoplot(trueLLA(1), trueLLA(2), 'r+', 'MarkerSize', 12, ...
+            'LineWidth', 2, 'DisplayName', 'Truth');
+
+        % -- VOR BEARING CONES --
+        if any(valid)
+            visIdx = find(valid);
+            CONE_HALF_ANGLE_DEG = 2;
+
+            for j = 1:numel(visIdx)
+                vorLat = vorMeasData(visIdx(j)).lat;
+                vorLon = vorMeasData(visIdx(j)).lon;
+
+                % bearing from VOR to current position ESTIMATE (not raw measurement)
+                dLat = estLLA(1) - vorLat;
+                dLon = estLLA(2) - vorLon;
+                bearingToEst = atan2(dLon, dLat);  % N=0, E=pi/2 convention
+
+                % cone length = exact distance from VOR to estimate
+                CONE_LENGTH_DEG = sqrt(dLat^2 + dLon^2);
+
+                % left and right cone edges centered on bearing to estimate
+                leftBearing  = bearingToEst - deg2rad(CONE_HALF_ANGLE_DEG);
+                rightBearing = bearingToEst + deg2rad(CONE_HALF_ANGLE_DEG);
+
+                % arc endpoint at aircraft distance
+                arcAngles = linspace(leftBearing, rightBearing, 30);
+                arcLats = vorLat + CONE_LENGTH_DEG * cos(arcAngles);
+                arcLons = vorLon + CONE_LENGTH_DEG * sin(arcAngles);
+
+                coneLats = [vorLat, arcLats, vorLat];
+                coneLons = [vorLon, arcLons, vorLon];
+
+                % outline (all MATLAB versions)
+                geoplot(coneLats, coneLons, 'c-', 'LineWidth', 1, 'DisplayName', '');
+
+                % % filled cone (R2023a+ only, comment out if unavailable)
+                % geopatch(coneLats, coneLons, 'c', 'FaceAlpha', 0.12, ...
+                %     'EdgeColor', 'cyan', 'LineWidth', 1, 'DisplayName', '');
+            end
+
+            % single legend entry
+            geoplot(NaN, NaN, 'c-', 'LineWidth', 1.5, 'DisplayName', '2° VOR cone');
+        end
+
+
+        % -- covariance ellipse in LLA --
+        % extract position covariance and project to lat/lon degrees
+        P_pos = P(1:3, 1:3, i+1);          % 3x3 ECI position covariance (meters²)
+        METERS_PER_DEG = 111139;
+
+        % rough ECI->lat/lon covariance projection (diagonal approximation)
+        P_latlon = P_pos(1:2, 1:2) / METERS_PER_DEG^2;  % 2x2 in degrees²
+
+        % eigendecomposition for ellipse axes
+        [V, D] = eig(P_latlon);
+        angles = linspace(0, 2*pi, 100);
+        nSigma = 3;
+        unit_circle = [cos(angles); sin(angles)];
+        ellipse_pts = V * (nSigma * sqrt(D)) * unit_circle;  % 2xN in degrees
+        ellipse_lats = estLLA(1) + ellipse_pts(1, :);
+        ellipse_lons = estLLA(2) + ellipse_pts(2, :);
+        geoplot(ellipse_lats, ellipse_lons, 'y-', 'LineWidth', 1.5, ...
+            'DisplayName', '3\sigma bounds');
+
+        % formatting
+        geobasemap('streets');   % or 'satellite', 'topographic', 'darkwater'
+        legend('Location', 'best');
+        title(sprintf('KF State  |  t = %.1f s  |  %d/%d bearings used', ...
+            trajImuData.time(i), sum(valid), nVor));
+        drawnow;
     end
 
 end
@@ -160,28 +258,48 @@ end
 
 %% helper functions
 % Dynamics Function
-function xnext = dynamics(x,a,td,dt,tB2ECI)
+function xnext = dynamics(x,a,bodyRates,dt,tB2ECI)
+    % STATE VECTOR:
+    % x(1:3) - ECI position (m)
+    % x(4:6) - ECI velocity (m/s)
+    % x(7:9) - Euler angles [phi, theta, psi] (deg) ZYX convention
 
-    dx = zeros(21,1);
+    dx = zeros(9,1);
 
-    % Velocity into position
+    % --- POSITION: velocity into position ---
     dx(1:3) = x(4:6);
 
-    % Specific force into velocity; subtracting out our expected bias and
-    % scale factor
-    % dx(4:6) = tB2ECI * (a' - x(16:18) .* 9.80665e-3)./(1 + x(10:12) .* 9.80665e-3);
-    dx(4:6) = tB2ECI * a';
+    % --- VELOCITY: specific force rotated to ECI + gravity ---
+    mu = 3.986004418e14;        % m^3/s^2
+    r_vec = x(1:3);
+    r_norm = norm(r_vec);
+    g_ECI = -mu / r_norm^3 * r_vec;
 
-    % Angular rates into orientation; subtracting out our expected bias and
-    % scale factor
-    % dx(7:9) = (td' - x(19:21))./(1 + x(13:15) .* 1e-3);
-    dx(7:9) = rad2deg(td');
+    dx(4:6) = tB2ECI * a' + g_ECI;
 
-    % Don't propogate bias and scale factor
-    dx(10:21) = zeros(12,1);
+    % --- ORIENTATION: Euler kinematic equations ---
+    phi   = deg2rad(x(7));
+    theta = deg2rad(x(8));
 
-    % propogate
-    xnext = x + dt*dx;
+    p = bodyRates(1);
+    q = bodyRates(2);
+    r = bodyRates(3);
+
+    % guard against gimbal lock (theta near +/- 90 deg)
+    cos_theta = cos(theta);
+    if abs(cos_theta) < 1e-6
+        cos_theta = sign(cos_theta) * 1e-6;
+    end
+
+    phi_dot   = p + q*sin(phi)*tan(theta) + r*cos(phi)*tan(theta);
+    theta_dot =     q*cos(phi)            - r*sin(phi);
+    psi_dot   =    (q*sin(phi)            + r*cos(phi)) / cos_theta;
+
+    dx(7:9) = rad2deg([phi_dot; theta_dot; psi_dot]);
+
+    % --- PROPAGATE ---
+    xnext = x + dt * dx;
+
 
 end
 
@@ -294,13 +412,12 @@ end
 
 function hx = predictedBearings(x, vorMeasData, visibleVorIdents, UTC)
     pos = x(1:3);
-    visibleIdx = find(contains(string(vertcat(vorMeasData.ident)), visibleVorIdents));
-    n = numel(visibleIdx);
+    n = numel(vorMeasData);  % iterate directly, no visibleIdx filtering needed
     hx = zeros(n, 1);
     tECI2ECEF_mat = dcmeci2ecef('IAU-2000/2006', datevec(UTC));
 
     for k = 1:n
-        stationLLA = [vorMeasData(visibleIdx(k)).lat, vorMeasData(visibleIdx(k)).lon, 0];  % fix here
+        stationLLA = [vorMeasData(k).lat, vorMeasData(k).lon, 0];
         stationPosECI = lla2eci(stationLLA, datevec(UTC))';
         lat = stationLLA(1);
         lon = stationLLA(2);
@@ -308,7 +425,6 @@ function hx = predictedBearings(x, vorMeasData, visibleVorIdents, UTC)
         tECI2NED = tECEF2NED * tECI2ECEF_mat;
         dr = pos - stationPosECI;
         drNED = tECI2NED * dr;
-
         hx(k) = mod(atan2(drNED(2), drNED(1)), 2*pi);
     end
 end
@@ -316,13 +432,12 @@ end
 
 function H = predictedBearingJacobian(x, vorMeasData, visibleVorIdents, UTC)
     pos = x(1:3);
-    visibleIdx = find(contains(string(vertcat(vorMeasData.ident)), visibleVorIdents));
-    n = numel(visibleIdx);
+    n = numel(vorMeasData);  % iterate directly, no visibleIdx filtering needed
     H = zeros(n, numel(x));
     tECI2ECEF_mat = dcmeci2ecef('IAU-2000/2006', datevec(UTC));
 
     for k = 1:n
-        stationLLA = [vorMeasData(visibleIdx(k)).lat, vorMeasData(visibleIdx(k)).lon, 0];  % fix here
+        stationLLA = [vorMeasData(k).lat, vorMeasData(k).lon, 0];
         stationPosECI = lla2eci(stationLLA, datevec(UTC))';
         lat = stationLLA(1);
         lon = stationLLA(2);
@@ -332,9 +447,7 @@ function H = predictedBearingJacobian(x, vorMeasData, visibleVorIdents, UTC)
         drNED = T * dr;
         N = drNED(1);
         E = drNED(2);
-        denom = N^2 + E^2;
-
-        % Jacobian of atan2(E,N) wrt ECI position
+        denom = max(N^2 + E^2, 1e-6);
         dHdpos = (-E * T(1,:) + N * T(2,:)) / denom;
         H(k, 1:3) = dHdpos;
     end
