@@ -73,8 +73,8 @@ P(:,:,1) = P0;
 % run for-loop
 for i = 1:numel(trajImuData.time) 
 
-   currentUTC = initialUTC + seconds(dt * i);
-   tB2ECI = calculateBody2ECI(x(:,i), currentUTC);
+   currentUTC(i) = initialUTC + seconds(dt * i);
+   tB2ECI = calculateBody2ECI(x(:,i), currentUTC(i));
    sf = trajImuData.specificForceBodyTruth(i,:);
    bodyRates = trajImuData.gyroRatesTruth(i,:);
 
@@ -85,7 +85,7 @@ for i = 1:numel(trajImuData.time)
     P(:,:,i+1) = Phi * P(:,:,i) * Phi' + Q;
 
     trueLLA = [trajImuData.lat(i), trajImuData.lon(i), trajImuData.alt(i)];
-    trueECI = lla2eci(trueLLA, datevec(currentUTC));
+    trueECI = lla2eci(trueLLA, datevec(currentUTC(i)));
 
     % if VOR meas happens, run VOR meas
     if trajImuData.time(i) - vorMeasLast > 1/vorMeasRate
@@ -110,10 +110,10 @@ for i = 1:numel(trajImuData.time)
         % H = jacobian_h(x(:,i+1), vorMeasData, visibleVorIdents, currentUTC);
         % 
 
-        H = predictedBearingJacobian(x(:,i+1), vorMeasData, visibleVorIdents, currentUTC);
+        H = predictedBearingJacobian(x(:,i+1), vorMeasData, visibleVorIdents, currentUTC(i));
 
         % compute HX
-        hx = predictedBearings(trueECI', vorMeasData, visibleVorIdents, currentUTC);
+        hx = predictedBearings(trueECI', vorMeasData, visibleVorIdents, currentUTC(i));
         z_vor = deg2rad(vorMeasBearing');
 
         innovation = mod(z_vor - hx + pi, 2*pi) - pi;  % wraps to (-pi, pi]
