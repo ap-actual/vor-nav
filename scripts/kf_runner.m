@@ -16,6 +16,14 @@ VOR_1_SIGMA = deg2rad(2); % 2-deg 1-sigma
 
 R = VOR_1_SIGMA^2;
 
+%% GIF Export Settings
+GIF_FILENAME   = 'kf_output.gif';
+GIF_FRAME_SKIP = 5;        % write every Nth measurement update to GIF (increase to reduce file size)
+GIF_DELAY      = 0.2;      % seconds between frames (increase to slow down / reduce file size)
+GIF_RESOLUTION = '-r72';   % DPI: '-r72' (low), '-r96' (med), '-r150' (high)
+GIF_COLORS     = 128;      % colormap depth: 2-256 (decrease to reduce file size)
+gif_frame_count = 0;       % internal counter, do not change
+
 %% generate truth IMU and VOR measurement data
 
 % clear everything except flight data (in case previous step has been skipped)
@@ -90,87 +98,66 @@ for i = 1:numel(trajImuData.time)
 
     % if VOR meas happens, run VOR meas
     if trajImuData.time(i) - vorMeasLast > 1/vorMeasRate
-        
-        % generate VOR measurement
-        truthLla = [trajImuData.lat(i), trajImuData.lon(i), trajImuData.alt(i)];
 
-        % create vor meas
+        truthLla = [trajImuData.lat(i), trajImuData.lon(i), trajImuData.alt(i)];
         vorMeasData = VorNav.vorMeas(truthLla, "lla", navAids);
         nVor = numel(vorMeasData);
-        R = VOR_1_SIGMA^2 * eye(nVor);
 
-        % generate VOR meas with noise
-        vorNoise = VOR_1_SIGMA * randn(1,numel([vorMeasData.bearing_deg]));
-        vorMeasBearing = [vorMeasData.bearing_deg];
-        vorMeasBearing = vorNoise + vorMeasBearing;
+        vorNoise = VOR_1_SIGMA * randn(1, nVor);
+        vorMeasBearing = deg2rad([vorMeasData.bearing_deg] + vorNoise);  % rad
 
-        % compute jacobian
-        H = predictedBearingJacobian(x(:,i+1), vorMeasData, visibleVorIdents, currentUTC(i));
+        H_all  = predictedBearingJacobian(x(:,i+1), vorMeasData, currentUTC(i));
+        hx_all = predictedBearings(x(1:3,i+1), vorMeasData, currentUTC(i));
 
-        % compute HX
-        hx = predictedBearings(x(1:3,i+1), vorMeasData, visibleVorIdents, currentUTC(i));
-        z_vor = deg2rad(vorMeasBearing');
-
-        innovation = mod(z_vor - hx + pi, 2*pi) - pi;  % wraps to (-pi, pi]
-        % disp(innovation)
-
-        S = H * P(:,:,i+1) * H' + R;
-        S_diag = diag(S);  % individual innovation variances
-
-        % find which measurements pass the gate
-        valid = false(nVor, 1);
+        nUsed = 0;
         for j = 1:nVor
-            norm_innov_sq = innovation(j)^2 / S_diag(j);  % scalar chi2, 1-DOF
-            if norm_innov_sq < chi2inv(0.9973, 1)  % = 8.99
-                valid(j) = true;
-            else
-                fprintf("Bearing %.0f gated at t = %.1f s (%.2f sigma)\n", ...
-                    j, trajImuData.time(i), sqrt(norm_innov_sq));
+
+            % --- recompute H and hx with latest state after each update ---
+            H_all  = predictedBearingJacobian(x(:,i+1), vorMeasData, currentUTC(i));
+            hx_all = predictedBearings(x(1:3,i+1), vorMeasData, currentUTC(i));
+
+            H_j         = H_all(j, :);           % 1x9
+            hx_j        = hx_all(j);             % scalar, rad
+            z_j         = vorMeasBearing(j);      % scalar, rad
+            innovation_j = mod(z_j - hx_j + pi, 2*pi) - pi;  % wrap to (-pi, pi]
+
+            S_j          = H_j * P(:,:,i+1) * H_j' + VOR_1_SIGMA^2;  % scalar
+            norm_innov_sq = innovation_j^2 / S_j;
+
+            if norm_innov_sq > chi2inv(0.9973, 1)
+                fprintf("Bearing %d (%s) gated at t=%.1fs (%.2f sigma)\n", ...
+                    j, vorMeasData(j).ident, trajImuData.time(i), sqrt(norm_innov_sq));
+                continue;
             end
+
+            % scalar Kalman gain
+            K = P(:,:,i+1) * H_j' / S_j;         % 9x1
+            x(:,i+1)    = x(:,i+1) + K * innovation_j;
+            IKH         = eye(9) - K * H_j;
+            P(:,:,i+1)  = IKH * P(:,:,i+1) * IKH' + K * VOR_1_SIGMA^2 * K';
+            P(:,:,i+1)  = (P(:,:,i+1) + P(:,:,i+1)') / 2;  % enforce symmetry
+            nUsed       = nUsed + 1;
         end
 
-        % only update if at least one measurement passed
-        if any(valid)
-            H_v = H(valid, :);
-            R_v = R(valid, valid);
-            innovation_v = innovation(valid);
+        fprintf("Measurement update at t=%.1fs (%d/%d bearings used)\n", ...
+            trajImuData.time(i), nUsed, nVor);
 
-            S_v = H_v * P(:,:,i+1) * H_v' + R_v;
-            K = P(:,:,i+1) * H_v' / S_v;
-            x(:,i+1) = x(:,i+1) + K * innovation_v;
-            IKH = eye(9) - K * H_v;
-            P(:,:,i+1) = IKH * P(:,:,i+1) * IKH' + K * R_v * K';
-            P(:,:,i+1) = (P(:,:,i+1) + P(:,:,i+1)') / 2;
-            fprintf("Measurement update at t = %f s (%d/%d bearings used)\n", ...
-                trajImuData.time(i), sum(valid), nVor);
-
-            eigvals = eig(P(:,:,i+1));
-            fprintf("min eigenvalue of P: %.4e\n", min(eigvals));
-        end
-        
-        % reset last meas time
         vorMeasLast = trajImuData.time(i);
 
         % ------ GEOPLOT UPDATE -------------------------------------------
         figure(1); clf;
 
-        % plot all known VORs (dim)
-        % allLats = [navAids.high(:).y, navAids.low(:).y];
-        % allLons = [navAids.high(:).x, navAids.low(:).x];
-        % geoplot(allLats, allLons, 'b.', 'MarkerSize', 6, 'DisplayName', 'All VORs');
-        % hold on;
-
         % plot visible/active VORs (bright, labeled)
-        if any(valid)
-            activeLats = [vorMeasData(valid).lat];
-            activeLons = [vorMeasData(valid).lon];
+        if nVor > 0
+            activeLats = [vorMeasData.lat];
+            activeLons = [vorMeasData.lon];
             geoplot(activeLats, activeLons, 'b^', 'MarkerSize', 10, ...
                 'MarkerFaceColor', 'b', 'DisplayName', 'Active VORs');
             hold on;
 
-            for j = 1:numel(activeLats)
+            for j = 1:nVor
                 text(activeLats(j), activeLons(j), ...
-                    sprintf('  %s', vorMeasData(j).ident), ...  % adjust field name to match your struct
+                    sprintf('  %s', vorMeasData(j).ident), ...
                     'FontSize', 8, 'Color', 'blue');
             end
         end
@@ -185,13 +172,12 @@ for i = 1:numel(trajImuData.time)
             'LineWidth', 2, 'DisplayName', 'Truth');
 
         % -- VOR BEARING CONES --
-        if any(valid)
-            visIdx = find(valid);
+        if nVor > 0
             CONE_HALF_ANGLE_DEG = 2;
 
-            for j = 1:numel(visIdx)
-                vorLat = vorMeasData(visIdx(j)).lat;
-                vorLon = vorMeasData(visIdx(j)).lon;
+            for j = 1:nVor
+                vorLat = vorMeasData(j).lat;
+                vorLon = vorMeasData(j).lon;
 
                 % bearing from VOR to current position ESTIMATE (not raw measurement)
                 dLat = estLLA(1) - vorLat;
@@ -215,42 +201,65 @@ for i = 1:numel(trajImuData.time)
 
                 % outline (all MATLAB versions)
                 geoplot(coneLats, coneLons, 'c-', 'LineWidth', 1, 'DisplayName', '');
-
-                % % filled cone (R2023a+ only, comment out if unavailable)
-                % geopatch(coneLats, coneLons, 'c', 'FaceAlpha', 0.12, ...
-                %     'EdgeColor', 'cyan', 'LineWidth', 1, 'DisplayName', '');
             end
 
             % single legend entry
             geoplot(NaN, NaN, 'c-', 'LineWidth', 1.5, 'DisplayName', '2° VOR cone');
         end
 
-
         % -- covariance ellipse in LLA --
-        % extract position covariance and project to lat/lon degrees
-        P_pos = P(1:3, 1:3, i+1);          % 3x3 ECI position covariance (meters²)
-        METERS_PER_DEG = 111139;
+        % rotate ECI position covariance into NED frame
+        P_pos_ECI = P(1:3, 1:3, i+1);          % 3x3 ECI covariance (m²)
 
-        % rough ECI->lat/lon covariance projection (diagonal approximation)
-        P_latlon = P_pos(1:2, 1:2) / METERS_PER_DEG^2;  % 2x2 in degrees²
+        % get rotation from ECI to NED at current estimated position
+        tECI2ECEF = dcmeci2ecef('IAU-2000/2006', datevec(currentUTC(i)));
+        tECEF2NED = dcmecef2ned(estLLA(1), estLLA(2));
+        tECI2NED  = tECEF2NED * tECI2ECEF;     % 3x3
+
+        % rotate covariance into NED (meters²)
+        P_NED = tECI2NED * P_pos_ECI * tECI2NED';
+
+        % take North/East subblock and convert to degrees²
+        METERS_PER_DEG = 111139;
+        P_latlon = P_NED(1:2, 1:2) / METERS_PER_DEG^2;  % [North, East] in degrees²
 
         % eigendecomposition for ellipse axes
         [V, D] = eig(P_latlon);
-        angles = linspace(0, 2*pi, 100);
-        nSigma = 3;
+        angles      = linspace(0, 2*pi, 100);
+        nSigma      = 3;
         unit_circle = [cos(angles); sin(angles)];
-        ellipse_pts = V * (nSigma * sqrt(D)) * unit_circle;  % 2xN in degrees
+        ellipse_pts = V * (nSigma * sqrt(abs(D))) * unit_circle;  % 2xN in degrees
         ellipse_lats = estLLA(1) + ellipse_pts(1, :);
         ellipse_lons = estLLA(2) + ellipse_pts(2, :);
         geoplot(ellipse_lats, ellipse_lons, 'y-', 'LineWidth', 1.5, ...
             'DisplayName', '3\sigma bounds');
 
         % formatting
-        geobasemap('streets');   % or 'satellite', 'topographic', 'darkwater'
+        geobasemap('streets');
         legend('Location', 'best');
         title(sprintf('KF State  |  t = %.1f s  |  %d/%d bearings used', ...
-            trajImuData.time(i), sum(valid), nVor));
+            trajImuData.time(i), nUsed, nVor));
         drawnow;
+
+        % -- GIF FRAME CAPTURE --
+        gif_frame_count = gif_frame_count + 1;
+        if mod(gif_frame_count, GIF_FRAME_SKIP) == 0
+            frame    = getframe(figure(1));
+            im       = frame2im(frame);
+            [imind, cm] = rgb2ind(im, GIF_COLORS);
+
+            if gif_frame_count == GIF_FRAME_SKIP
+                % first frame — create the file
+                imwrite(imind, cm, GIF_FILENAME, 'gif', ...
+                    'Loopcount', Inf, ...
+                    'DelayTime', GIF_DELAY);
+            else
+                % subsequent frames — append
+                imwrite(imind, cm, GIF_FILENAME, 'gif', ...
+                    'WriteMode', 'append', ...
+                    'DelayTime', GIF_DELAY);
+            end
+        end    
     end
 
 end
@@ -410,7 +419,7 @@ end
 %     end
 % end
 
-function hx = predictedBearings(x, vorMeasData, visibleVorIdents, UTC)
+function hx = predictedBearings(x, vorMeasData, UTC)
     pos = x(1:3);
     n = numel(vorMeasData);  % iterate directly, no visibleIdx filtering needed
     hx = zeros(n, 1);
@@ -430,7 +439,7 @@ function hx = predictedBearings(x, vorMeasData, visibleVorIdents, UTC)
 end
 
 
-function H = predictedBearingJacobian(x, vorMeasData, visibleVorIdents, UTC)
+function H = predictedBearingJacobian(x, vorMeasData, UTC)
     pos = x(1:3);
     n = numel(vorMeasData);  % iterate directly, no visibleIdx filtering needed
     H = zeros(n, numel(x));
