@@ -41,8 +41,19 @@ function plotStateEstimate(utc, x, P, trajImuData)
     plot(utcSecondsDownsampled, x(3,:)); legend("truth", "estimate"); title("ECI Z")
 
     figure();
+    subplot(3,1,1);
     plot(utcSecondsDownsampled, x(1,:)-lla_truth(1,:)); hold on;
     plot(utcSecondsDownsampled, sqrt(squeeze(P(1,1,:))), 'r--'); 
     plot(utcSecondsDownsampled, -sqrt(squeeze(P(1,1,:))), 'r--'); 
+
+    subplot(3,1,2);
+    plot(utcSecondsDownsampled, x(2,:)-lla_truth(2,:)); hold on;
+    plot(utcSecondsDownsampled, sqrt(squeeze(P(2,2,:))), 'r--'); 
+    plot(utcSecondsDownsampled, -sqrt(squeeze(P(2,2,:))), 'r--'); 
+
+    subplot(3,1,3);
+    plot(utcSecondsDownsampled, x(3,:)-lla_truth(3,:)); hold on;
+    plot(utcSecondsDownsampled, sqrt(squeeze(P(3,3,:))), 'r--'); 
+    plot(utcSecondsDownsampled, -sqrt(squeeze(P(3,3,:))), 'r--'); 
 
 end
