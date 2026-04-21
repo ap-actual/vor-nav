@@ -11,7 +11,8 @@ As there are many VOR’s scattered across the country with diverse geometry, th
 
 <img width="643" height="359" alt="BWI_to_ORD_VOR" src="https://github.com/user-attachments/assets/a1eae7c8-d62f-4c56-83bc-9793729dae46" />
 
-
+## Project Overview
+This project will mechanize an Extended Kalman Filter (EKF) to utilize 
 
 ## Datasets Used
 ### Aircraft Trajectories
