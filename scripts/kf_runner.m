@@ -54,14 +54,14 @@ x0 = [pos0; vel0; orn0;... % dynamic states, X0 will be set depending on traject
     0; 0; 0];                       % Zero G Gyro
 
 % P0
-P0 = diag([1e6; 1e6; 1e6; 100; 100; 100; 180; 180; 180;... % Dynamics prior free(?)
+P0 = diag([1e3; 1e3; 1e3; 10; 10; 10; 180; 180; 180;... % Dynamics prior free(?)
     6.4000e-07; 6.4000e-07; 6.4000e-07;...                 % Accel Sensitivites
     8.5069e-04; 8.5069e-04; 8.5069e-04;...                 % Gyro Sensitivites
     469.4444; 469.4444; 469.4444;...                       % Zero G Accel
     1; 1; 1]);                                             % Zero G Gyro
 
 % Q 
-Qc = diag([0; 0; 0; 3.4621e-07; 3.4621e-07; 3.4621e-07; 1.2250e-05; 1.2250e-05; 1.2250e-05; zeros(12,1)]);
+Qc = diag([0; 0; 0; 3.4621e-07; 3.4621e-07; 3.4621e-07; 1.2250e-05; 1.2250e-05; 1.2250e-05; zeros(12,1)])*1000;
 Q = Qc * dt;
 
 x = zeros(21,nTimes);
@@ -81,7 +81,7 @@ for i = 1:numel(trajImuData.time)
     % -- KF PROPAGATION --
     x(:,i+1) = dynamics(x(:,i), sf, bodyRates, dt, tB2ECI);
     F = jacobian_f(x(:,i), sf, bodyRates, dt, tB2ECI);
-    Phi = expm(F * dt);
+    Phi = F;
     P(:,:,i+1) = Phi * P(:,:,i) * Phi' + Q;
 
     trueLLA = [trajImuData.lat(i), trajImuData.lon(i), trajImuData.alt(i)];
@@ -116,7 +116,9 @@ for i = 1:numel(trajImuData.time)
         hx = predictedBearings(trueECI', vorMeasData, visibleVorIdents, currentUTC(i));
         z_vor = deg2rad(vorMeasBearing');
 
+        
         innovation = mod(z_vor - hx + pi, 2*pi) - pi;  % wraps to (-pi, pi]
+        disp(innovation)
 
         % check for 3 sigma innovation
         badInd = abs(innovation) >= 3 * deg2rad(sqrt(R));
@@ -132,7 +134,15 @@ for i = 1:numel(trajImuData.time)
 
         x(:, i+1) = x(:, i+1) + K * innovation;
 
-        P(:,:,i+1) = (eye(numel(21)) - K * H) *  P(:,:,i+1);
+        IKH = eye(21) - K * H;
+        P(:,:,i+1) = IKH * P(:,:,i+1) * IKH' + K * R * K';
+        P(:,:,i+1) = (P(:,:,i+1) + P(:,:,i+1)') / 2;
+
+        % disp('H = '); disp(H)
+        % disp('H*P*H'' + R = '); disp(H * P(:,:,i+1) * H' + R)
+        % disp('K = '); disp(K)
+        % disp('K*H = '); disp(K*H)
+        % disp('eig(I - K*H) = '); disp(eig(eye(21) - K*H))
         
         fprintf("Successful measurement update at t = %d seconds!\r\n", trajImuData.time(i))
 
@@ -282,57 +292,45 @@ function hx = predictedBearings(x, vorMeasData, visibleVorIdents, UTC)
     visibleIdx = find(contains(string(vertcat(vorMeasData.ident)), visibleVorIdents));
     n = numel(visibleIdx);
     hx = zeros(n, 1);
-
     tECI2ECEF_mat = dcmeci2ecef('IAU-2000/2006', datevec(UTC));
 
-    for k = 1:numel(visibleIdx)
-        stationLLA = [vorMeasData(k).lat, vorMeasData(k).lon, 0];
+    for k = 1:n
+        stationLLA = [vorMeasData(visibleIdx(k)).lat, vorMeasData(visibleIdx(k)).lon, 0];  % fix here
         stationPosECI = lla2eci(stationLLA, datevec(UTC))';
-
         lat = stationLLA(1);
         lon = stationLLA(2);
         tECEF2NED = dcmecef2ned(lat, lon);
         tECI2NED = tECEF2NED * tECI2ECEF_mat;
-
         dr = pos - stationPosECI;
         drNED = tECI2NED * dr;
 
-        % atan2 returns (-pi, pi]; wrap to [0, 2pi)
         hx(k) = mod(atan2(drNED(2), drNED(1)), 2*pi);
     end
 end
 
-function H = predictedBearingJacobian(x, vorMeasData, visibleVorIdents, UTC)
 
+function H = predictedBearingJacobian(x, vorMeasData, visibleVorIdents, UTC)
     pos = x(1:3);
     visibleIdx = find(contains(string(vertcat(vorMeasData.ident)), visibleVorIdents));
     n = numel(visibleIdx);
-
-    H = zeros(n, numel(x)); % assumes x may be larger than 3
-
+    H = zeros(n, numel(x));
     tECI2ECEF_mat = dcmeci2ecef('IAU-2000/2006', datevec(UTC));
 
     for k = 1:n
-
-        stationLLA = [vorMeasData(k).lat, vorMeasData(k).lon, 0];
+        stationLLA = [vorMeasData(visibleIdx(k)).lat, vorMeasData(visibleIdx(k)).lon, 0];  % fix here
         stationPosECI = lla2eci(stationLLA, datevec(UTC))';
-
         lat = stationLLA(1);
         lon = stationLLA(2);
         tECEF2NED = dcmecef2ned(lat, lon);
         T = tECEF2NED * tECI2ECEF_mat;
-
         dr = pos - stationPosECI;
         drNED = T * dr;
-
         N = drNED(1);
         E = drNED(2);
+        denom = N^2 + E^2;
 
-        denom = (N^2 + E^2);
-
-        % Jacobian wrt position
+        % Jacobian of atan2(E,N) wrt ECI position
         dHdpos = (-E * T(1,:) + N * T(2,:)) / denom;
-
-        H(k,1:3) = dHdpos;
+        H(k, 1:3) = dHdpos;
     end
 end
