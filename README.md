@@ -106,10 +106,9 @@ $$
 These represent true acceleration in the NED/Nav frame.
 
 
-
 #### Euler Angle Approximation
 
-Assumptions for large commercial aircraft:
+To get the Euler angles from the flight data, some assumptions for large commercial aircraft were made:
 
 - Yaw:
 
