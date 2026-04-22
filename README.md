@@ -155,8 +155,7 @@ p \\ q \\ r
 \end{bmatrix}
 \begin{bmatrix}
 \dot{\phi} \\ \dot{\theta} \\ \dot{\psi}
-\end{bmatrix}
-$$
+\end{bmatrix}$$
 
 
 
