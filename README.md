@@ -143,7 +143,8 @@ $$
 
 Body angular rates are computed as:
 
-$$
+$$ 
+
 \begin{bmatrix}
 p \\ q \\ r
 \end{bmatrix}
