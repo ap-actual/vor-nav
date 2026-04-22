@@ -108,29 +108,28 @@ These represent true acceleration in the NED/Nav frame.
 
 #### Euler Angle Approximation
 
-To get the Euler angles from the flight data, some assumptions for large commercial aircraft were made:
+To get the Euler angles from the flight data, some assumptions for large commercial aircraft were made because no orientation data was given:
 
-- Yaw:
+- Yaw is assumed to be heading:
 
 $$
 \psi = \text{heading}
 $$
 
-- Pitch (flight path angle):
+- Pitch is assumed to be equal to the flight path angle:
 
 $$
 \theta = \gamma = \arctan\left(\frac{V_{vertical}}{V_h}\right)
 $$
 
-- Roll:
+- Roll assumed coordinated no slip turns:
 
 $$
 \phi = \arctan\left(\frac{V_{heading}\dot{\psi}}{g}\right)
 $$
 
-- Derived assuming coordinated (no-slip) turns
 
-Time derivatives computed via gradients:
+Time rate derivatives computed via gradients:
 
 $$
 \dot{\phi}, \quad \dot{\theta}, \quad \dot{\psi}
