@@ -143,20 +143,23 @@ $$
 
 
 Body angular rates are computed as:
-
 $$
-\begin{bmatrix}
-p \\ q \\ r
-\end{bmatrix}=
-\begin{bmatrix}
+\begin{pmatrix}
+p \\
+q \\
+r
+\end{pmatrix}=
+\begin{pmatrix}
 1 & 0 & -\sin\theta \\
 0 & \cos\phi & \sin\phi \cos\theta \\
 0 & -\sin\phi & \cos\phi \cos\theta
-\end{bmatrix}
-\begin{bmatrix}
-\dot{\phi} \\ \dot{\theta} \\ \dot{\psi}
-\end{bmatrix}$$
-
+\end{pmatrix}
+\begin{pmatrix}
+\dot{\phi} \\
+\dot{\theta} \\
+\dot{\psi}
+\end{pmatrix}
+$$
 
 
 #### Specific Force
