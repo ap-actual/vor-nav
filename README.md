@@ -143,6 +143,7 @@ $$
 
 
 Body angular rates are computed as:
+
 $$
 \begin{pmatrix}
 p \\
