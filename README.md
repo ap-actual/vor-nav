@@ -30,6 +30,204 @@ Navaid data for the entire continental United States was pulled from the FAA web
 <img width="788" height="461" alt="image" src="https://github.com/user-attachments/assets/abdfe919-68a2-4815-96d5-6d2fb7ecfe9b" />
 
 ## Simulated Measurement Data
+### Generation of Simulated Measurements
+
+#### Overview
+
+This portion describes the methodology used to generate simulated IMU measurements for EKF testing. The process consists of:
+
+1. Processing real flight trajectory data  
+2. Generating "truth" IMU measurements  
+3. Injecting sensor errors based on IMU specifications  
+
+---
+
+#### Data Source
+
+Flight trajectory data was obtained from:
+- https://opensky-network.org
+
+Each trajectory contains data sampled at **0.1 Hz (every 10 seconds)**:
+- Time (s)
+- Latitude (deg)
+- Longitude (deg)
+- Speed (knots)
+- Heading (deg)
+- Vertical rate (m/s)
+- Geoaltitude (m)
+
+---
+
+#### Data Preprocessing
+
+The following filtering steps were applied:
+- Removed non-flight segments (e.g., ground idle)
+- Removed flights with missing data (NaNs or dropouts)
+- Ensured continuous trajectory segments only
+
+---
+
+#### Interpolation
+
+Trajectory data was upsampled to **10 Hz** using PCHIP interpolation:
+
+- Prevents oscillations between sparse data points  
+- Preserves monotonicity of trajectory  
+
+---
+
+#### NED Frame Conversion
+
+Velocity was converted into the North-East-Down (NED) frame:
+
+$$
+V_h = \sqrt{V^2 - V_{\text{vertical}}^2}
+$$
+
+$$
+V_N = V_h \cos(\psi)
+$$
+
+$$
+V_E = V_h \sin(\psi)
+$$
+
+$$
+V_D = -V_{vertical}
+$$
+
+---
+
+#### Acceleration (Truth)
+
+Acceleration was computed via numerical differentiation:
+
+$$
+a_N = \frac{dV_N}{dt}, \quad
+a_E = \frac{dV_E}{dt}, \quad
+a_D = \frac{dV_D}{dt}
+$$
+
+These represent **true acceleration in the NED frame**.
+
+---
+
+#### Euler Angle Approximation
+
+Assumptions for large commercial aircraft:
+
+- Yaw:
+
+$$
+\psi = \text{heading}
+$$
+
+- Pitch (flight path angle):
+
+$$
+\theta = \gamma = \arctan\left(\frac{V_{vertical}}{V_h}\right)
+$$
+
+- Roll:
+- Derived assuming coordinated (no-slip) turns
+
+Time derivatives computed via gradients:
+
+$$
+\dot{\phi}, \quad \dot{\theta}, \quad \dot{\psi}
+$$
+
+---
+
+#### Gyroscope Measurements (Body Rates)
+
+Body angular rates are computed as:
+
+$$
+\begin{bmatrix}
+p \\ q \\ r
+\end{bmatrix}
+=
+\begin{bmatrix}
+1 & 0 & -\sin\theta \\
+0 & \cos\phi & \sin\phi \cos\theta \\
+0 & -\sin\phi & \cos\phi \cos\theta
+\end{bmatrix}
+\begin{bmatrix}
+\dot{\phi} \\ \dot{\theta} \\ \dot{\psi}
+\end{bmatrix}
+$$
+
+---
+
+#### Specific Force
+
+Specific force is computed in the NED frame:
+
+$$
+\mathbf{f}_{nav} = \mathbf{a}_{nav} - \mathbf{g}_{nav}
+$$
+
+Then rotated into the body frame using a 3-2-1 Direction Cosine Matrix:
+
+$$
+\mathbf{f}_{body} = C_{b/n} \, \mathbf{f}_{nav}
+$$
+
+---
+
+#### Gravity Model
+
+Gravity is computed using the WGS-84 model:
+
+- Function: `gravitywgs84`
+- Evaluated at each interpolated position
+
+---
+
+#### Validation
+
+Truth IMU data is validated by integrating acceleration:
+
+$$
+\mathbf{v}(t) = \int \mathbf{a}(t)\, dt
+$$
+
+The reconstructed velocity is compared against the original trajectory to ensure consistency.
+
+---
+
+#### IMU Error Modeling
+
+After generating truth data, IMU errors are injected based on the sensor specification sheet.
+
+##### Modeled Error Sources
+
+- Bias  
+- Cross-axis sensitivity  
+- White noise  
+
+##### Not Modeled
+
+- Temperature-dependent effects (no data available)
+
+---
+
+### Final Output
+
+The final IMU dataset includes:
+- Body-frame specific force measurements  
+- Body-frame angular rates (p, q, r)  
+- Injected sensor errors  
+
+---
+
+### Notes
+
+- All computations are performed at **10 Hz**
+- NED is used as the navigation frame
+- Body frame is derived using **3-2-1 (ZYX) rotations**
+
 
 ### VOR Measurement Model
 <img width="960" height="720" alt="VOR Measurement Model (1)" src="https://github.com/user-attachments/assets/5a6ed984-e55c-466d-9215-f78262b91298" />
