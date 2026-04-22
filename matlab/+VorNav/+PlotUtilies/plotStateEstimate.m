@@ -1,59 +1,68 @@
 function plotStateEstimate(utc, x, P, trajImuData)
-
-    % format time input
+    % 1. Format time input
     utcSeconds = seconds(utc - utc(1));
-
-    % downsample state data
-    tol = 1e-9;
-    secIdx = mod(utcSeconds, 2) < tol | mod(utcSeconds, 2) > (2 - tol);
-    % secIdx = true(1,numel(utcSeconds));
-
-    % utc time
+    
+    % 2. Define downsampling parameters
+    FRAME_SKIP = 10;
+    FRAME_END = numel(utcSeconds); 
+    secIdx = 1:FRAME_SKIP:FRAME_END; 
+    
+    % 3. Downsample time and state data
     utcDownsampled = utc(secIdx);
     utcSecondsDownsampled = utcSeconds(secIdx);
+    x_down = x(:, secIdx);
+    P_down = P(:, :, secIdx);
     
-    % downsample state data
-    x = x(:,secIdx);
-    P = P(:,:,secIdx);
+    % 4. Downsample truth data (LLA)
+    lat_down = trajImuData.lat(secIdx);
+    lon_down = trajImuData.lon(secIdx);
+    alt_down = trajImuData.alt(secIdx);
     
-    % downsample truth data
-    lat = trajImuData.lat(secIdx);
-    lon = trajImuData.lon(secIdx);
-    alt = trajImuData.alt(secIdx);
-
-    % convert downsampled lla to eci
-    for i = 1:numel(lat)
-        lla_truth(:,i) = lla2eci([lat(i),lon(i), alt(i)], datevec(utcDownsampled(i)))';
+    % 5. Convert downsampled LLA to ECI
+    % Pre-allocate to prevent the "zero-filling" issue
+    numSamples = numel(secIdx);
+    lla_truth = zeros(3, numSamples);
+    
+    for i = 1:numSamples
+        % Convert each point using the corresponding timestamp
+        lla_truth(:,i) = lla2eci([lat_down(i), lon_down(i), alt_down(i)], ...
+                                 datevec(utcDownsampled(i)))';
     end
-
     
-    figure();
-    subplot(3,1,1); 
-    plot(utcSecondsDownsampled, lla_truth(1,:)); hold on;
-    plot(utcSecondsDownsampled, x(1,:)); legend("truth", "estimate"); title("ECI X")
+    % --- Figure 1: State vs Truth ---
+    figure('Name', 'State Comparison (ECI)', 'NumberTitle', 'off');
+    titles = ["ECI X", "ECI Y", "ECI Z"];
+    for axisIdx = 1:3
+        subplot(3,1,axisIdx); 
+        plot(utcSecondsDownsampled, lla_truth(axisIdx,:), 'k', 'LineWidth', 1.5); hold on;
+        plot(utcSecondsDownsampled, x_down(axisIdx,:), 'r--'); 
+        legend("Truth", "Estimate"); 
+        title(titles(axisIdx));
+        ylabel('Meters');
+        grid on;
+    end
+    xlabel('Time (seconds)');
 
-    subplot(3,1,2); 
-    plot(utcSecondsDownsampled, lla_truth(2,:)); hold on;
-    plot(utcSecondsDownsampled, x(2,:)); legend("truth", "estimate"); title("ECI Y")
-
-    subplot(3,1,3); 
-    plot(utcSecondsDownsampled, lla_truth(3,:)); hold on;
-    plot(utcSecondsDownsampled, x(3,:)); legend("truth", "estimate"); title("ECI Z")
-
-    figure();
-    subplot(3,1,1);
-    plot(utcSecondsDownsampled, x(1,:)-lla_truth(1,:)); hold on;
-    plot(utcSecondsDownsampled, sqrt(squeeze(P(1,1,:))), 'r--'); 
-    plot(utcSecondsDownsampled, -sqrt(squeeze(P(1,1,:))), 'r--'); 
-
-    subplot(3,1,2);
-    plot(utcSecondsDownsampled, x(2,:)-lla_truth(2,:)); hold on;
-    plot(utcSecondsDownsampled, sqrt(squeeze(P(2,2,:))), 'r--'); 
-    plot(utcSecondsDownsampled, -sqrt(squeeze(P(2,2,:))), 'r--'); 
-
-    subplot(3,1,3);
-    plot(utcSecondsDownsampled, x(3,:)-lla_truth(3,:)); hold on;
-    plot(utcSecondsDownsampled, sqrt(squeeze(P(3,3,:))), 'r--'); 
-    plot(utcSecondsDownsampled, -sqrt(squeeze(P(3,3,:))), 'r--'); 
-
+    % --- Figure 2: Error and Covariance (Sigma Envelopes) ---
+    figure('Name', 'Estimation Error (3-Sigma)', 'NumberTitle', 'off');
+    for axisIdx = 1:3
+        subplot(3,1,axisIdx);
+        
+        % Calculate error
+        error_val = x_down(axisIdx,:) - lla_truth(axisIdx,:);
+        
+        % Calculate 1-sigma bounds from the diagonal of covariance matrix P
+        sigma = sqrt(squeeze(P_down(axisIdx, axisIdx, :)))';
+        
+        % Plot error and 3-sigma bounds
+        plot(utcSecondsDownsampled, error_val, 'b'); hold on;
+        plot(utcSecondsDownsampled, sigma, 'r--'); 
+        plot(utcSecondsDownsampled, -sigma, 'r--'); 
+        
+        title(['Error in ', titles(axisIdx)]);
+        legend("Error", "1\sigma Bound");
+        ylabel('Error (m)');
+        grid on;
+    end
+    xlabel('Time (seconds)');
 end
