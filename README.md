@@ -45,6 +45,9 @@ This portion describes the methodology used to generate simulated IMU measuremen
 
 Flight trajectory data was obtained from:
 - https://opensky-network.org
+- Below is a picture of the data contained for each opensky-network trajectory
+
+<img width="1592" height="696" alt="image" src="https://github.com/user-attachments/assets/74ec5894-c41d-4c07-9f3f-132008ce963f" />
 
 Each trajectory contains data sampled at **0.1 Hz (every 10 seconds)**:
 - Time (s)
