@@ -41,7 +41,6 @@ This portion describes the methodology used to generate simulated IMU measuremen
 3. Injecting sensor errors based on IMU specifications  
 
 
-
 #### Data Source
 
 Flight trajectory data was obtained from:
@@ -57,14 +56,12 @@ Each trajectory contains data sampled at **0.1 Hz (every 10 seconds)**:
 - Geoaltitude (m)
 
 
-
 #### Data Preprocessing
 
-The following filtering steps were applied:
+The following filtering steps were applied to find suitable flights:
 - Removed non-flight segments (e.g., ground idle)
 - Removed flights with missing data (NaNs or dropouts)
 - Ensured continuous trajectory segments only
-
 
 
 #### Interpolation
@@ -72,13 +69,11 @@ The following filtering steps were applied:
 Trajectory data was upsampled to **10 Hz** using PCHIP interpolation:
 
 - Prevents oscillations between sparse data points  
-- Preserves monotonicity of trajectory  
-
 
 
 #### NED Frame Conversion
 
-Velocity was converted into the North-East-Down (NED) frame:
+Velocity was converted into the North-East-Down (NED) frame which is conventionally the Nav Frame:
 
 $$
 V_h = \sqrt{V^2 - V_{\text{vertical}}^2}
@@ -108,7 +103,7 @@ a_E = \frac{dV_E}{dt}, \quad
 a_D = \frac{dV_D}{dt}
 $$
 
-These represent **true acceleration in the NED frame**.
+These represent true acceleration in the NED/Nav frame.
 
 
 
