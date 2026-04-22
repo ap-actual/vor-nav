@@ -31,17 +31,12 @@ Navaid data for the entire continental United States was pulled from the FAA web
 
 ## Simulated Measurement Data
 ### Generation of Simulated Measurements
-
-#### Overview
-
+#### Data Processing and Interpolation
 This portion describes the methodology used to generate simulated IMU measurements for EKF testing. The process consists of:
 
 1. Processing real flight trajectory data  
 2. Generating "truth" IMU measurements  
 3. Injecting sensor errors based on IMU specifications  
-
-
-#### Data Source
 
 Flight trajectory data was obtained from:
 - https://opensky-network.org
@@ -58,23 +53,13 @@ Each trajectory contains data sampled at **0.1 Hz (every 10 seconds)**:
 - Vertical rate (m/s)
 - Geoaltitude (m)
 
-
-#### Data Preprocessing
-
 The following filtering steps were applied to find suitable flights:
 - Removed non-flight segments (e.g., ground idle)
 - Removed flights with missing data (NaNs or dropouts)
 - Ensured continuous trajectory segments only
 
+Trajectory data was then upsampled to **10 Hz** using PCHIP interpolation to prevent oscillations between sparse data points  
 
-#### Interpolation
-
-Trajectory data was upsampled to **10 Hz** using PCHIP interpolation:
-
-- Prevents oscillations between sparse data points  
-
-
-#### NED Frame Conversion
 
 Velocity was converted into the North-East-Down (NED) frame which is conventionally the Nav Frame:
 
@@ -94,10 +79,6 @@ $$
 V_D = -V_{vertical}
 $$
 
-
-
-#### Acceleration (Truth)
-
 Acceleration was computed via numerical differentiation:
 
 $$
@@ -108,11 +89,7 @@ $$
 
 These represent true acceleration in the NED/Nav frame.
 
-
-#### Euler Angle Approximation
-
 To get the Euler angles from the flight data, some assumptions for large commercial aircraft were made because no orientation data was given:
-
 - Yaw is assumed to be heading:
 
 $$
@@ -138,11 +115,6 @@ $$
 \dot{\phi}, \quad \dot{\theta}, \quad \dot{\psi}
 $$
 
-
-
-#### Gyroscope Measurements (Body Rates)
-
-
 Body angular rates are computed as:
 
 $$
@@ -164,8 +136,6 @@ r
 $$
 
 
-#### Specific Force
-
 Specific force is computed in the NED frame:
 
 $$
@@ -179,17 +149,9 @@ $$
 $$
 
 
-
-#### Gravity Model
-
 Gravity is computed using the WGS-84 model:
-
 - Function: `gravitywgs84`
 - Evaluated at each interpolated position
-
-
-
-#### Validation
 
 Truth IMU data is validated by integrating acceleration:
 
@@ -199,35 +161,21 @@ $$
 
 The reconstructed velocity is compared against the original trajectory to ensure consistency.
 
-
-
 #### IMU Error Modeling
-
-After generating truth data, IMU errors are injected based on the sensor specification sheet.
-
-##### Modeled Error Sources
-
+After generating truth data, IMU errors are injected based on the sensor specification sheet. Modeled error sources include: 
 - Bias  
 - Cross-axis sensitivity  
 - White noise  
 
-##### Not Modeled
-
+Models not included were: 
 - Temperature-dependent effects (no data available)
-
-
-
-### Final Output
 
 The final IMU dataset includes:
 - Body-frame specific force measurements  
 - Body-frame angular rates (p, q, r)  
 - Injected sensor errors  
 
-
-
-### Notes
-
+Notes on the IMU Dataset: 
 - All computations are performed at **10 Hz**
 - NED is used as the navigation frame
 - Body frame is derived using **3-2-1 (ZYX) rotations**
