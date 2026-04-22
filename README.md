@@ -33,10 +33,13 @@ Navaid data for the entire continental United States was pulled from the FAA web
 
 ### VOR Measurement Model
 <img width="960" height="720" alt="VOR Measurement Model (1)" src="https://github.com/user-attachments/assets/5a6ed984-e55c-466d-9215-f78262b91298" />
+> Link to draw file: https://docs.google.com/drawings/d/16Xxh9EqZsI2CmBNIY7Cf3i_a1hbbCS4FhxrkBuhYRwA/edit?usp=sharing
+
 
 ## The Extended Kalman Filter
+An Extended Kalman Filter (EKF) was selected to fuse the generated IMU and VOR measurements into a final state estimate. An EKF was chosen as the relationship between the measurements 
 
-> Link to draw file: https://docs.google.com/drawings/d/16Xxh9EqZsI2CmBNIY7Cf3i_a1hbbCS4FhxrkBuhYRwA/edit?usp=sharing
+
 
 ## References
 
