@@ -29,8 +29,7 @@ Navaid data for the entire continental United States was pulled from the FAA web
 
 <img width="788" height="461" alt="image" src="https://github.com/user-attachments/assets/abdfe919-68a2-4815-96d5-6d2fb7ecfe9b" />
 
-## Simulated Measurement Data
-### Generation of Simulated Measurements
+### Generation of Simulated IMU Measurements
 #### Data Processing and Interpolation
 This portion describes the methodology used to generate simulated IMU measurements for EKF testing. The process consists of:
 
@@ -180,6 +179,27 @@ Notes on the IMU Dataset:
 - NED is used as the navigation frame
 - Body frame is derived using **3-2-1 (ZYX) rotations**
 
+### Generation of VOR Measurements
+VOR location data is loaded in from the `datasets/` routine and then processed at the top of the filter script. The `vorMeas` function then accepts aircraft positioning in either **ECEF** (Earth-Centered, Earth-Fixed) or **LLA** (Latitude, Longitude, Altitude) formats. 
+
+To determine the spatial relationship between the aircraft and each navaid, the function utilizes two primary mathematical models:
+* **Haversine Formula:** Used to calculate the great-circle distance between the aircraft and the VOR, accounting for the Earth's curvature.
+* **Bearing Calculation:** Computes the forward azimuth from the VOR station to the aircraft. This represents the **true radial** the aircraft is currently occupying.
+
+The function then applies standard FAA Service Volume constraints to determine signal "reception." A VOR is only returned if the aircraft falls within its defined range-altitude envelope:
+
+| VOR Class | Altitude Range (ft) | Max Range (NM) |
+| :--- | :--- | :--- |
+| **Low (L-VOR)** | 1,000 to 14,500 | 40 |
+| **High (H-VOR)** | 1,000 to 14,500 | 40 |
+| | 14,500 to 18,000 | 100 |
+| | 18,000 to 45,000 | 130 |
+| | 45,000 to 60,000 | 100 |
+
+The function returns an array of structs (`validVORs`), each containing the original navaid metadata appended with calculated measurement fields:
+* **lat / lon**: Explicit coordinate mapping for the station.
+* **distance_m**: The calculated great-circle distance in meters.
+* **bearing_deg**: The true bearing from the station to the aircraft (0–359°).
 
 ### VOR Measurement Model
 <img width="960" height="720" alt="VOR Measurement Model (1)" src="https://github.com/user-attachments/assets/5a6ed984-e55c-466d-9215-f78262b91298" />
@@ -188,6 +208,7 @@ Notes on the IMU Dataset:
 
 ## The Extended Kalman Filter
 An Extended Kalman Filter (EKF) was selected to fuse the generated IMU and VOR measurements into a final state estimate. An EKF was chosen as the relationship between the measurements 
+
 
 
 
