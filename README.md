@@ -141,8 +141,8 @@ $$
 
 #### Gyroscope Measurements (Body Rates)
 
-Body angular rates are computed as:
 
+Body angular rates are computed as:
 
 $$
 \begin{bmatrix}
