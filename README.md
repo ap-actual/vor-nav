@@ -12,7 +12,10 @@ As there are many VOR’s scattered across the country with diverse geometry, th
 <img width="643" height="359" alt="BWI_to_ORD_VOR" src="https://github.com/user-attachments/assets/a1eae7c8-d62f-4c56-83bc-9793729dae46" />
 
 ## Project Overview
-This project will mechanize an Extended Kalman Filter (EKF) to utilize 
+This project will
+1. [Collect a dataset of representative aircraft trajectories and FAA terrestrial navigation aids (NAVAIDS)](#datasets-used)
+2. [Generate simulated IMU and VOR measurements](#simulated-measurement-data) along a given flight path from the dataset generated above
+3. Fuse the simulated measurements using an [Extended Kalman Filter](#the-extended-kalman-filter)
 
 ## Datasets Used
 ### Aircraft Trajectories
@@ -26,8 +29,12 @@ Navaid data for the entire continental United States was pulled from the FAA web
 
 <img width="788" height="461" alt="image" src="https://github.com/user-attachments/assets/abdfe919-68a2-4815-96d5-6d2fb7ecfe9b" />
 
+## Simulated Measurement Data
+
 ### VOR Measurement Model
 <img width="960" height="720" alt="VOR Measurement Model (1)" src="https://github.com/user-attachments/assets/5a6ed984-e55c-466d-9215-f78262b91298" />
+
+## The Extended Kalman Filter
 
 > Link to draw file: https://docs.google.com/drawings/d/16Xxh9EqZsI2CmBNIY7Cf3i_a1hbbCS4FhxrkBuhYRwA/edit?usp=sharing
 
