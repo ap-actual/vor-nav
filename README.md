@@ -13,7 +13,7 @@ As there are many VOR’s scattered across the country with diverse geometry, th
 
 ## Project Overview
 This project will
-1. [Collect a dataset]((#datasets-used)) of representative aircraft trajectories and FAA terrestrial navigation aids (NAVAIDS)
+1. [Collect a dataset](#datasets-used) of representative aircraft trajectories and FAA terrestrial navigation aids (NAVAIDS)
 2. [Generate simulated IMU and VOR measurements](#simulated-measurement-data) along a given flight path from the dataset generated above
 3. Fuse the simulated measurements using an [Extended Kalman Filter](#the-extended-kalman-filter)
 
