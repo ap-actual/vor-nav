@@ -40,7 +40,7 @@ This portion describes the methodology used to generate simulated IMU measuremen
 2. Generating "truth" IMU measurements  
 3. Injecting sensor errors based on IMU specifications  
 
----
+
 
 #### Data Source
 
@@ -56,7 +56,7 @@ Each trajectory contains data sampled at **0.1 Hz (every 10 seconds)**:
 - Vertical rate (m/s)
 - Geoaltitude (m)
 
----
+
 
 #### Data Preprocessing
 
@@ -65,7 +65,7 @@ The following filtering steps were applied:
 - Removed flights with missing data (NaNs or dropouts)
 - Ensured continuous trajectory segments only
 
----
+
 
 #### Interpolation
 
@@ -74,7 +74,7 @@ Trajectory data was upsampled to **10 Hz** using PCHIP interpolation:
 - Prevents oscillations between sparse data points  
 - Preserves monotonicity of trajectory  
 
----
+
 
 #### NED Frame Conversion
 
@@ -96,7 +96,7 @@ $$
 V_D = -V_{vertical}
 $$
 
----
+
 
 #### Acceleration (Truth)
 
@@ -110,7 +110,7 @@ $$
 
 These represent **true acceleration in the NED frame**.
 
----
+
 
 #### Euler Angle Approximation
 
@@ -137,7 +137,7 @@ $$
 \dot{\phi}, \quad \dot{\theta}, \quad \dot{\psi}
 $$
 
----
+
 
 #### Gyroscope Measurements (Body Rates)
 
@@ -149,7 +149,6 @@ $$
 p \\ q \\ r
 \end{bmatrix}
 =
-
 \begin{bmatrix}
 1 & 0 & -\sin\theta \\
 0 & \cos\phi & \sin\phi \cos\theta \\
@@ -160,7 +159,7 @@ p \\ q \\ r
 \end{bmatrix}
 $$
 
----
+
 
 #### Specific Force
 
@@ -176,7 +175,7 @@ $$
 \mathbf{f}_{body} = C_{b/n} \, \mathbf{f}_{nav}
 $$
 
----
+
 
 #### Gravity Model
 
@@ -185,7 +184,7 @@ Gravity is computed using the WGS-84 model:
 - Function: `gravitywgs84`
 - Evaluated at each interpolated position
 
----
+
 
 #### Validation
 
@@ -197,7 +196,7 @@ $$
 
 The reconstructed velocity is compared against the original trajectory to ensure consistency.
 
----
+
 
 #### IMU Error Modeling
 
@@ -213,7 +212,7 @@ After generating truth data, IMU errors are injected based on the sensor specifi
 
 - Temperature-dependent effects (no data available)
 
----
+
 
 ### Final Output
 
@@ -222,7 +221,7 @@ The final IMU dataset includes:
 - Body-frame angular rates (p, q, r)  
 - Injected sensor errors  
 
----
+
 
 ### Notes
 
