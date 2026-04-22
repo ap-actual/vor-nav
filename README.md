@@ -147,8 +147,7 @@ Body angular rates are computed as:
 $$
 \begin{bmatrix}
 p \\ q \\ r
-\end{bmatrix}
-=
+\end{bmatrix}=
 \begin{bmatrix}
 1 & 0 & -\sin\theta \\
 0 & \cos\phi & \sin\phi \cos\theta \\
