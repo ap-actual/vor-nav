@@ -123,6 +123,11 @@ $$
 $$
 
 - Roll:
+
+$$
+\phi = \arctan\left(\frac{V_{heading}\dot{\psi}}{g}\right)
+$$
+
 - Derived assuming coordinated (no-slip) turns
 
 Time derivatives computed via gradients:
