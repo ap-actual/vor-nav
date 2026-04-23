@@ -255,6 +255,14 @@ $$
 The H matrix jacobian is obtained through the non-linear measurement model as described above, and fed into the **Jacob Form** of the Kalman update equations. This was done as instabilities were found to appear rapidly after a new VOR entered the plane's line of sight, and will be discussed further in the results section.
 
 $$
+H(:,1:3) = [-\frac{\Delta r_{N_n}}{\rho^2}, \frac{\Delta r_{E_n}}{\rho^2}, 0] * T_{ECI}^{NED_{VOR_n}}
+$$
+
+$$
+H(:,4:9) = 0_{7xn}
+$$
+
+$$
 K = \frac{P_{n,n-1}H^T}{HP_{n,n-1}H^T + R}
 $$
 
@@ -271,9 +279,11 @@ P_{n,n} = (I_{9x9} - KH) * P_{n,n-1} * (I_{9x9} - KH)^T + K * R * K
 $$
 
 ## Results
-Here it is!
+In our final results, the propagation model was shown to be highly inconsistent with expected reality. To combat this, the process noise was raised to increase the filter's reliability on VOR measurements. We can see the reduction in the inital uncertainty with this simulation:
 
 <img width="1078" height="720" alt="Initial Uncertainty Shrink-1(1)" src="https://github.com/user-attachments/assets/ed5b2e79-4e96-463f-a4db-d5dd693a04b0" />
+
+Throughout the simulation the position uncertainty approached a steady state of ~2 km 
 
 
 
