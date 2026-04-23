@@ -279,7 +279,7 @@ P_{n,n} = (I_{9x9} - KH) * P_{n,n-1} * (I_{9x9} - KH)^T + K * R * K
 $$
 
 ## Results
-The Flight trajectory used for this demonstration was a commercial flight from San Diego to Sacramento
+The Flight trajectory used for this demonstration was a commercial flight from San Diego to Sacramento. Throughout the trajectory, the Aircraft came into range of 27 (?) VORs
 
 <img width="777" height="799" alt="image" src="https://github.com/user-attachments/assets/d6f8efd3-8671-4117-9b92-8dbc6401b8f7" />
 The plot of the flight path with VOR stations marked as blue triangles.
