@@ -289,16 +289,22 @@ The trajectory used for this demonstration was a commercial flight from San Dieg
 
 The plot of the flight path with VOR stations marked as blue triangles.
 
-
 <img width="806" height="585" alt="Initial Uncertainty Shrink-1(1)(1)" src="https://github.com/user-attachments/assets/84525fd8-79cd-4a85-a605-27ff7a1fd46d" />
 
 This simulation shows the initial uncertainty reducing as the VOR measurements update the aircraft's position.
-
 
 <img width="800" height="700" alt="sf_approach(1)" src="https://github.com/user-attachments/assets/4331a64d-6d58-42db-a1e1-f8e015ef3ce7" />
 
 Ground track with uncertainty bounds throughout the end of the flight
 
+<img width="1359" height="866" alt="chi_to_boston" src="https://github.com/user-attachments/assets/93ea7369-47f6-491e-92f2-dbc7d4325232" />
+
+This code was tested for multiple trajectories pulled from the open sky database with similar results. VOR coverage across the East and West coast appear sufficient for navgiation using tri-lateration of VORs. 
+
+## Future Work
+Future work includes: 
+- Fix the dynamic propagation model / imu measurements
+- Run large data sweep of many commercial flights across the entire US and identify where there are not enough VORs for trilateration flights
 
 ## Challenges 
 
