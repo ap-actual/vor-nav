@@ -298,7 +298,7 @@ This simulation shows the initial uncertainty reducing as the VOR measurements u
 In our final results, the propagation model was shown to be highly inconsistent with expected reality. To combat this, the process noise was raised to increase the filter's reliability on VOR measurements.
 
 <img width="1462" height="949" alt="ECI_estimates" src="https://github.com/user-attachments/assets/7c37fb5e-c8ac-46aa-9e5f-c0bb2933f9b5" />
-Throughout the simulation the position uncertainty approached a "steady state" of ~2 km
+The ECI position uncertainty approached a "steady state" of ~2 km, with the state estimates showing observability and general good behavior within the EKF. 
 
 
 
