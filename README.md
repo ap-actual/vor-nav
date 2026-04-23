@@ -1,3 +1,4 @@
+<img width="1462" height="949" alt="ECI_estimates" src="https://github.com/user-attachments/assets/4df6a2d4-316f-4d7b-8f26-fe0842fce48d" />
 # vor-nav
 ## Introduction
 It is no secret that GPS is vulnerable, and the United States as a whole is too reliant on its service [1]. One particular weak point is commercial aircraft’s inability to identify a spoofing attack and reject bad GPS measurements [2].
@@ -284,17 +285,19 @@ The Flight trajectory used for this demonstration was a commercial flight from S
 <img width="777" height="799" alt="image" src="https://github.com/user-attachments/assets/d6f8efd3-8671-4117-9b92-8dbc6401b8f7" />
 The plot of the flight path with VOR stations marked as blue triangles.
 
+
 <img width="779" height="790" alt="image" src="https://github.com/user-attachments/assets/31ab6989-b2c4-4749-97d3-013540c1920e" />
 Ground track with uncertainty bounds throughout the end of the flight
+
 
 <img width="1078" height="760" alt="Initial Uncertainty Shrink-1(1)(1)" src="https://github.com/user-attachments/assets/84525fd8-79cd-4a85-a605-27ff7a1fd46d" />
 This simulation shows the initial uncertainty reducing as the VOR measurements update the aircraft's position.
 
+
 ### Challenges with dynamic propagation
 In our final results, the propagation model was shown to be highly inconsistent with expected reality. To combat this, the process noise was raised to increase the filter's reliability on VOR measurements.
 
-
-
+<img width="1462" height="949" alt="ECI_estimates" src="https://github.com/user-attachments/assets/7c37fb5e-c8ac-46aa-9e5f-c0bb2933f9b5" />
 Throughout the simulation the position uncertainty approached a "steady state" of ~2 km
 
 
