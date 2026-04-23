@@ -1,5 +1,4 @@
 # vor-nav
-
 ## Introduction
 It is no secret that GPS is vulnerable, and the United States as a whole is too reliant on its service [1]. One particular weak point is commercial aircraft’s inability to identify a spoofing attack and reject bad GPS measurements [2].
 
@@ -207,10 +206,69 @@ The function returns an array of structs (`validVORs`), each containing the orig
 
 
 ## The Extended Kalman Filter
-An Extended Kalman Filter (EKF) was selected to fuse the generated IMU and VOR measurements into a final state estimate. An EKF was chosen as the relationship between the measurements 
+An Extended Kalman Filter (EKF) was selected to fuse the generated IMU and VOR measurements into a final state estimate. An EKF was chosen as the relationship between the VOR measurements and the IMU data propogation is nonlinear. 
 
+### Time Update
 
+The IMU measurements were propogated in the ECI frame as whole-state position, velocity, and orientation. The propagation equation was defined as:
 
+$$
+\begin{pmatrix}
+\dot{x}_{ECI} \\
+\dot{v}_{ECI} \\
+\dot{\phi}
+\end{pmatrix} = \begin{pmatrix}
+v_{ECI} \\
+T_{NED}^{ECI} * sf_{NED} + g_{ECI} \\
+f(angularRates, \phi)
+\end{pmatrix}
+$$
+
+With:
+
+$$
+f([p, q, r]_{body}, [\phi, \theta, \psi]) = \begin{pmatrix}
+p + q * sin(\phi) * tan(\theta) + r * cos(\phi) * tan(\theta)\\
+q * cos(\phi) - r * sin(\phi)\\
+q * sin(\phi) + r * cos(\phi)
+\end{pmatrix}
+$$
+
+The F matrix jacobian is calculated numerically, and used to propagate covariance in line with the Kalman filtering equations
+
+$$
+P_{n+1,n} = FP_{n,n}F^T + Q
+$$
+
+The process noise matrix is defined by the velocity random walk (VRW) and angular random walk (ARW) values defined in the IMU spec sheet, specifically:
+
+$$
+Q = \begin{pmatrix}
+0_{3x3} && ... && ...\\
+... && VRW{3x3} && ...\\
+... && ... && ARW{3x3}
+\end{pmatrix}
+$$
+
+### Measurement Update
+
+The H matrix jacobian is obtained through the non-linear measurement model as described above, and fed into the **Jacob Form** of the Kalman update equations. This was done as instabilities were found to appear rapidly after a new VOR entered the plane's line of sight, and will be discussed further in the results section.
+
+$$
+K = \frac{P_{n,n-1}H^T}{HP_{n,n-1}H^T + R}
+$$
+
+With R defined as the VOR bearing measurement 1 sigma of 2 degrees.
+
+$$
+x_{n,n} = x_{n,n-1} + K(z - Hx_{n,n-1})
+$$
+
+With $z_n$ being the true measurement value
+
+$$
+P_{n,n} = (I_{9x9} - KH) * P_{n,n-1} * (I_{9x9} - KH)^T + K * R * K
+$$
 
 ## References
 
