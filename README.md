@@ -1,4 +1,8 @@
 # vor-nav
+- Brian Caskey
+- Ben Quock
+- Zach Zarus
+
 ## Introduction
 It is no secret that GPS is vulnerable, and the United States as a whole is too reliant on its service [1]. One particular weak point is commercial aircraft’s inability to identify a spoofing attack and reject bad GPS measurements [2].
 
