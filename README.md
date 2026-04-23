@@ -279,17 +279,21 @@ P_{n,n} = (I_{9x9} - KH) * P_{n,n-1} * (I_{9x9} - KH)^T + K * R * K
 $$
 
 ## Results
-The Flight trajectory used for this demonstration was a commercial flight from San Diego to Sacramento. Throughout the trajectory, the Aircraft came into range of 27 (?) VORs
+The trajectory used for this demonstration was a commercial flight from San Diego to Sacramento. Throughout the trajectory, the Aircraft came into range of 27 (?) unique VORs, and had constant coverage of at least 2 VORs.
 
 <img width="777" height="799" alt="image" src="https://github.com/user-attachments/assets/d6f8efd3-8671-4117-9b92-8dbc6401b8f7" />
+
 The plot of the flight path with VOR stations marked as blue triangles.
 
 
+
 <img width="779" height="790" alt="image" src="https://github.com/user-attachments/assets/31ab6989-b2c4-4749-97d3-013540c1920e" />
+
 Ground track with uncertainty bounds throughout the end of the flight
 
 
 <img width="806" height="585" alt="Initial Uncertainty Shrink-1(1)(1)" src="https://github.com/user-attachments/assets/84525fd8-79cd-4a85-a605-27ff7a1fd46d" />
+
 This simulation shows the initial uncertainty reducing as the VOR measurements update the aircraft's position.
 
 
@@ -297,6 +301,7 @@ This simulation shows the initial uncertainty reducing as the VOR measurements u
 In our final results, the propagation model was shown to be highly inconsistent with expected reality. To combat this, the process noise was raised to increase the filter's reliability on VOR measurements.
 
 <img width="1462" height="949" alt="ECI_estimates" src="https://github.com/user-attachments/assets/7c37fb5e-c8ac-46aa-9e5f-c0bb2933f9b5" />
+
 The ECI position uncertainty approached a "steady state" of ~2 km, with the state estimates showing observability and general good behavior within the EKF. 
 
 
