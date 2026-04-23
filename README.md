@@ -284,11 +284,11 @@ The Flight trajectory used for this demonstration was a commercial flight from S
 <img width="777" height="799" alt="image" src="https://github.com/user-attachments/assets/d6f8efd3-8671-4117-9b92-8dbc6401b8f7" />
 The plot of the flight path with VOR stations marked as blue triangles.
 
-<img width="1078" height="760" alt="Initial Uncertainty Shrink-1(1)(1)" src="https://github.com/user-attachments/assets/84525fd8-79cd-4a85-a605-27ff7a1fd46d" />
-This simulation shows the initial uncertainty reducing as the VOR measurements update the aircraft's position.
-
 <img width="779" height="790" alt="image" src="https://github.com/user-attachments/assets/31ab6989-b2c4-4749-97d3-013540c1920e" />
 Ground track with uncertainty bounds throughout the end of the flight
+
+<img width="1078" height="760" alt="Initial Uncertainty Shrink-1(1)(1)" src="https://github.com/user-attachments/assets/84525fd8-79cd-4a85-a605-27ff7a1fd46d" />
+This simulation shows the initial uncertainty reducing as the VOR measurements update the aircraft's position.
 
 ### Challenges with dynamic propagation
 In our final results, the propagation model was shown to be highly inconsistent with expected reality. To combat this, the process noise was raised to increase the filter's reliability on VOR measurements.
