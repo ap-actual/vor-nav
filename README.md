@@ -279,11 +279,15 @@ P_{n,n} = (I_{9x9} - KH) * P_{n,n-1} * (I_{9x9} - KH)^T + K * R * K
 $$
 
 ## Results
-In our final results, the propagation model was shown to be highly inconsistent with expected reality. To combat this, the process noise was raised to increase the filter's reliability on VOR measurements. We can see the reduction in the inital uncertainty with this simulation:
+In our final results, the propagation model was shown to be highly inconsistent with expected reality. To combat this, the process noise was raised to increase the filter's reliability on VOR measurements.
 
-<img width="1078" height="720" alt="Initial Uncertainty Shrink-1(1)" src="https://github.com/user-attachments/assets/ed5b2e79-4e96-463f-a4db-d5dd693a04b0" />
+<img width="1078" height="760" alt="Initial Uncertainty Shrink-1(1)(1)" src="https://github.com/user-attachments/assets/84525fd8-79cd-4a85-a605-27ff7a1fd46d" />
+This simulation shows the initial uncertainty reducing as the VOR measurements update the aircraft's position.
 
-Throughout the simulation the position uncertainty approached a steady state of ~2 km 
+
+
+
+Throughout the simulation the position uncertainty approached a "steady state" of ~2 km
 
 
 
