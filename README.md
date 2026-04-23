@@ -289,7 +289,7 @@ The plot of the flight path with VOR stations marked as blue triangles.
 Ground track with uncertainty bounds throughout the end of the flight
 
 
-<img width="1078" height="760" alt="Initial Uncertainty Shrink-1(1)(1)" src="https://github.com/user-attachments/assets/84525fd8-79cd-4a85-a605-27ff7a1fd46d" />
+<img width="537" height="390" alt="Initial Uncertainty Shrink-1(1)(1)" src="https://github.com/user-attachments/assets/84525fd8-79cd-4a85-a605-27ff7a1fd46d" />
 This simulation shows the initial uncertainty reducing as the VOR measurements update the aircraft's position.
 
 
