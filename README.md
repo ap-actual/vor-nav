@@ -273,7 +273,9 @@ $$
 ## Results
 Here it is!
 
-![Kf Output-1](https://github.com/user-attachments/assets/8f0e307a-d3e2-4a8c-8323-66e4010600db)
+<img width="1078" height="720" alt="Initial Uncertainty Shrink-1(1)" src="https://github.com/user-attachments/assets/ed5b2e79-4e96-463f-a4db-d5dd693a04b0" />
+
+
 
 ## References
 
