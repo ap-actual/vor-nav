@@ -301,12 +301,6 @@ Ground track with uncertainty bounds throughout the end of the flight
 
 This code was tested for multiple trajectories pulled from the open sky database with similar results. VOR coverage across the East and West coast appear sufficient for navgiation using tri-lateration of VORs. 
 
-## Future Work
-Future work includes: 
-- Fix the dynamic propagation model / imu measurements
-- Run large data sweep of many commercial flights across the entire US and identify where there are not enough VORs for trilateration flights
-- Implement the use of DME (distance measuring equipment) in the KF measurement update
-
 ## Challenges 
 
 ### Dynamic propagation
@@ -324,6 +318,14 @@ As these trajectories were tens of thousands of indices long (multiple hours of 
   results.P(:,:,i+1) = IKH_alt * results.P(:,:,i+1) * IKH_alt' + K_alt * R_alt * K_alt';
   results.P(:,:,i+1) = 0.5 * (results.P(:,:,i+1) + results.P(:,:,i+1)');
 ```
+
+
+## Future Work
+Future work includes: 
+- Fix the dynamic propagation model / imu measurements
+- Run large data sweep of many commercial flights across the entire US and identify where there are not enough VORs for trilateration flights
+- Implement the use of DME (distance measuring equipment) in the KF measurement update
+
 
 
 ## References
