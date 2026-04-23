@@ -1,4 +1,3 @@
-<img width="1462" height="949" alt="ECI_estimates" src="https://github.com/user-attachments/assets/4df6a2d4-316f-4d7b-8f26-fe0842fce48d" />
 # vor-nav
 ## Introduction
 It is no secret that GPS is vulnerable, and the United States as a whole is too reliant on its service [1]. One particular weak point is commercial aircraft’s inability to identify a spoofing attack and reject bad GPS measurements [2].
