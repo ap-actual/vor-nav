@@ -210,7 +210,7 @@ An Extended Kalman Filter (EKF) was selected to fuse the generated IMU and VOR m
 
 ### Time Update
 
-The IMU measurements were propogated in the ECI frame as whole-state position, velocity, and orientation. The propagation equation was defined as:
+The IMU measurements were propogated in the ECI frame as whole-state position, and velocity, with Euler angle orientation. The propagation equation was defined as:
 
 $$
 \begin{pmatrix}
@@ -224,7 +224,7 @@ f(angularRates, \phi)
 \end{pmatrix}
 $$
 
-With:
+With propagation of aircraft Euler angles as:
 
 $$
 f([p, q, r]_{body}, [\phi, \theta, \psi]) = \begin{pmatrix}
@@ -286,15 +286,14 @@ The trajectory used for this demonstration was a commercial flight from San Dieg
 The plot of the flight path with VOR stations marked as blue triangles.
 
 
-
-<img width="779" height="790" alt="image" src="https://github.com/user-attachments/assets/31ab6989-b2c4-4749-97d3-013540c1920e" />
-
-Ground track with uncertainty bounds throughout the end of the flight
-
-
 <img width="806" height="585" alt="Initial Uncertainty Shrink-1(1)(1)" src="https://github.com/user-attachments/assets/84525fd8-79cd-4a85-a605-27ff7a1fd46d" />
 
 This simulation shows the initial uncertainty reducing as the VOR measurements update the aircraft's position.
+
+
+<img width="800" height="700" alt="sf_approach(1)" src="https://github.com/user-attachments/assets/4331a64d-6d58-42db-a1e1-f8e015ef3ce7" />
+
+Ground track with uncertainty bounds throughout the end of the flight
 
 
 ### Challenges with dynamic propagation
