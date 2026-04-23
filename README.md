@@ -305,6 +305,7 @@ This code was tested for multiple trajectories pulled from the open sky database
 Future work includes: 
 - Fix the dynamic propagation model / imu measurements
 - Run large data sweep of many commercial flights across the entire US and identify where there are not enough VORs for trilateration flights
+- Implement the use of DME (distance measuring equipment) in the KF measurement update
 
 ## Challenges 
 
