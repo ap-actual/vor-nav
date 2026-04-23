@@ -181,6 +181,10 @@ Notes on the IMU Dataset:
 - All computations are performed at **10 Hz**
 - NED is used as the navigation frame
 - Body frame is derived using **3-2-1 (ZYX) rotations**
+<img width="640" height="479" alt="image" src="https://github.com/user-attachments/assets/89c4bb2d-e93e-4868-8b72-e812d5edc9fe" />
+<img width="661" height="652" alt="image" src="https://github.com/user-attachments/assets/ce783a27-bd04-417c-8435-1e46c75d6e27" />
+
+
 
 ### Generation of VOR Measurements
 VOR location data is loaded in from the `datasets/` routine and then processed at the top of the filter script. The `vorMeas` function then accepts aircraft positioning in either **ECEF** (Earth-Centered, Earth-Fixed) or **LLA** (Latitude, Longitude, Altitude) formats. 
