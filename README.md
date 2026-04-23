@@ -300,13 +300,23 @@ This simulation shows the initial uncertainty reducing as the VOR measurements u
 Ground track with uncertainty bounds throughout the end of the flight
 
 
-### Challenges with dynamic propagation
+## Challenges 
+
+### Dynamic propagation
 In our final results, the propagation model was shown to be highly inconsistent with expected reality. To combat this, the process noise was raised to increase the filter's reliability on VOR measurements.
 
 <img width="1462" height="949" alt="ECI_estimates" src="https://github.com/user-attachments/assets/7c37fb5e-c8ac-46aa-9e5f-c0bb2933f9b5" />
 
 The ECI position uncertainty approached a "steady state" of ~2 km, with the state estimates showing observability and general good behavior within the EKF. 
 
+
+### Numerical Stability
+As these trajectories were tens of thousands of indices long (multiple hours of 10hz data), the covariance matrix was found to lose symmetry due to numerical stability and diverge. This was solved with the following equation, which would enforce P symmetry at each measurment update.
+
+```
+  results.P(:,:,i+1) = IKH_alt * results.P(:,:,i+1) * IKH_alt' + K_alt * R_alt * K_alt';
+  results.P(:,:,i+1) = 0.5 * (results.P(:,:,i+1) + results.P(:,:,i+1)');
+```
 
 
 ## References
