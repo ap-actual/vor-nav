@@ -278,6 +278,10 @@ $$
 P_{n,n} = (I_{9x9} - KH) * P_{n,n-1} * (I_{9x9} - KH)^T + K * R * K
 $$
 
+### Altitude Measurement Update
+
+The VOR measurements only update the latitude and longitude of the aircraft, so a second measurement update was required for altitude. This was assuming a constant altimeter update within the aircraft. The innovation was the difference between the true altitude and the estimated altitude. The Jacobian of the H matrix is calculated numerically with perturbations, and an altitude measurement noise of 50 ft is applied in the Kalman filter update equations.
+
 ## Results
 The trajectory used for this demonstration was a commercial flight from San Diego to Sacramento. Throughout the trajectory, the Aircraft came into range of 27 unique VORs, and had constant coverage of at least 2 VORs.
 
